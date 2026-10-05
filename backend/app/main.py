@@ -23,6 +23,11 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     Base.metadata.create_all(bind=engine)
+    from .database import SessionLocal
+    from .services.results import complete_finished_tournaments
+
+    with SessionLocal() as db:
+        complete_finished_tournaments(db)
 
 
 app.include_router(players.router)

@@ -143,6 +143,8 @@ def _maybe_complete(db: Session, t: Tournament) -> None:
     """Mark a tournament completed once every match has been played."""
     if t.status == "completed":
         return
+    if db.execute(select(Match.id).where(Match.tournament_id == t.id).limit(1)).first() is None:
+        return  # no fixtures yet
     unplayed = db.execute(
         select(Match).where(Match.tournament_id == t.id, Match.played.is_(False)).limit(1)
     ).scalar_one_or_none()
@@ -161,6 +163,23 @@ def _maybe_complete(db: Session, t: Tournament) -> None:
     if t.end_date is None:
         t.end_date = date.today()
     db.flush()
+
+
+def complete_finished_tournaments(db: Session) -> int:
+    """Backfill: complete any active tournament whose matches are all played."""
+    changed = 0
+    tours = (
+        db.execute(select(Tournament).where(Tournament.status != "completed"))
+        .scalars()
+        .all()
+    )
+    for t in tours:
+        before = t.status
+        _maybe_complete(db, t)
+        if t.status != before:
+            changed += 1
+    db.commit()
+    return changed
 
 
 def _fill_third_place(db: Session, t: Tournament) -> None:
