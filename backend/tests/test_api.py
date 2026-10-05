@@ -288,6 +288,23 @@ def test_stats_with_dates_and_games():
     assert any(h["format"] == "friendly" for h in r.json()["history"])
 
 
+def test_close_tournament():
+    _reset()
+    ids = _make_players(4)
+    tid = client.post(
+        "/api/tournaments", json={"name": "Manual", "format": "league", "player_ids": ids}
+    ).json()["id"]
+    assert client.get(f"/api/tournaments/{tid}").json()["status"] == "active"
+    r = client.post(f"/api/tournaments/{tid}/close")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "completed"
+
+    # Renaming works too.
+    ren = client.patch(f"/api/tournaments/{tid}", json={"name": "Renamed"})
+    assert ren.status_code == 200
+    assert ren.json()["name"] == "Renamed"
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

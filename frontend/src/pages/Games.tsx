@@ -85,6 +85,7 @@ export default function Games() {
           <div>
             <label>Score</label>
             <input
+              className="no-spin"
               type="number"
               min={0}
               style={{ width: 64, textAlign: 'center' }}
@@ -98,6 +99,7 @@ export default function Games() {
           <div>
             <label>&nbsp;</label>
             <input
+              className="no-spin"
               type="number"
               min={0}
               style={{ width: 64, textAlign: 'center' }}

@@ -182,6 +182,33 @@ def complete_finished_tournaments(db: Session) -> int:
     return changed
 
 
+def close_tournament(db: Session, t: Tournament) -> Tournament:
+    """Manually close a tournament: pick a champion if we can, then complete it."""
+    if t.champion_id is None:
+        if t.format in ("league", "swiss"):
+            from .standings import standings
+
+            table = standings(db, t)
+            if table:
+                t.champion_id = table[0]["player_id"]
+        if t.champion_id is None:
+            final = db.execute(
+                select(Match)
+                .where(Match.tournament_id == t.id, Match.stage == "final")
+                .scalars()
+                .first()
+            )
+            if final is not None and final.winner_id is not None:
+                t.champion_id = final.winner_id
+
+    t.status = "completed"
+    if t.end_date is None:
+        t.end_date = date.today()
+    db.commit()
+    db.refresh(t)
+    return t
+
+
 def _fill_third_place(db: Session, t: Tournament) -> None:
     sfs = (
         db.execute(

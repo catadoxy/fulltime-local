@@ -60,6 +60,16 @@ def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+@router.post("/{tournament_id}/close")
+def close_tournament(tournament_id: int, db: Session = Depends(get_db)):
+    t = db.get(Tournament, tournament_id)
+    if not t:
+        raise HTTPException(404, "Tournament not found")
+    results.close_tournament(db, t)
+    db.refresh(t)
+    return tournament_out(t, detail=True)
+
+
 @router.get("/{tournament_id}/matches")
 def list_matches(tournament_id: int, db: Session = Depends(get_db)):
     t = db.get(Tournament, tournament_id)

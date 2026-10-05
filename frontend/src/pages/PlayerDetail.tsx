@@ -54,15 +54,19 @@ export default function PlayerDetail() {
         </Link>
       </div>
 
-      <div className="stats-grid" style={{ marginBottom: '1rem' }}>
+      <div className="stats-grid" style={{ marginBottom: '0.75rem' }}>
         <Stat label="Rating" value={totals.rating} />
         <Stat label="Elo" value={totals.elo} />
         <Stat label="Tournaments" value={totals.tournaments} />
         <Stat label="🏆 Titles" value={totals.titles} />
+      </div>
+      <div className="stats-grid" style={{ marginBottom: '0.75rem' }}>
         <Stat label="Matches played" value={totals.played} />
         <Stat label="Won" value={totals.won} />
         <Stat label="Drawn" value={totals.drawn} />
         <Stat label="Lost" value={totals.lost} />
+      </div>
+      <div className="stats-grid" style={{ marginBottom: '1rem' }}>
         <Stat label="Goals for" value={totals.goals_for} />
         <Stat label="Goals against" value={totals.goals_against} />
         <Stat label="Win rate" value={`${totals.win_rate}%`} />
@@ -74,6 +78,7 @@ export default function PlayerDetail() {
           <thead>
             <tr>
               <th>Tournament</th>
+              <th>Date</th>
               <th>Format</th>
               <th>P</th>
               <th>W</th>
@@ -94,6 +99,7 @@ export default function PlayerDetail() {
                     h.name
                   )}
                 </td>
+                <td className="muted small">{formatDate(h.start_date)}</td>
                 <td className="muted small">
                   {FORMAT_LABELS[h.format as TournamentFormat] ??
                     (h.format === 'friendly' ? 'Friendlies' : h.format)}
@@ -117,7 +123,7 @@ export default function PlayerDetail() {
             ))}
             {history.length === 0 && (
               <tr>
-                <td colSpan={9} className="muted">
+                <td colSpan={10} className="muted">
                   No tournaments played yet.
                 </td>
               </tr>
@@ -133,4 +139,11 @@ function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
   return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+function formatDate(value: string | null): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }

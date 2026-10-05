@@ -28,6 +28,9 @@ export default function TournamentDetail() {
   const [matches, setMatches] = useState<Match[]>([])
   const [tables, setTables] = useState<Table[]>([])
   const [error, setError] = useState('')
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [savingName, setSavingName] = useState(false)
 
   const load = async () => {
     try {
@@ -75,13 +78,75 @@ export default function TournamentDetail() {
     }
   }
 
+  const allPlayed = matches.length > 0 && matches.every((m) => m.played)
+
+  async function saveName() {
+    if (!t) return
+    setSavingName(true)
+    setError('')
+    try {
+      await api.updateTournament(t.id, { name: nameDraft.trim() || t.name })
+      setEditingName(false)
+      load()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setSavingName(false)
+    }
+  }
+
+  async function closeTournament() {
+    if (!t) return
+    const msg = allPlayed
+      ? `Close "${t.name}"? It will be marked as completed.`
+      : `"${t.name}" still has unplayed matches. Close it anyway?`
+    if (!confirm(msg)) return
+    try {
+      await api.closeTournament(t.id)
+      load()
+    } catch (e: any) {
+      setError(e.message)
+    }
+  }
+
   if (!t) return <div className="panel">{error || 'Loading…'}</div>
 
   return (
     <div>
       <div className="row between page-head">
-        <div>
-          <h1 style={{ marginBottom: 6 }}>{t.name}</h1>
+        <div className="grow">
+          {editingName ? (
+            <div className="row">
+              <input
+                value={nameDraft}
+                autoFocus
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveName()
+                  if (e.key === 'Escape') setEditingName(false)
+                }}
+                style={{ fontSize: '1.35rem', fontWeight: 700, minWidth: 280 }}
+              />
+              <button className="primary" disabled={savingName} onClick={saveName}>
+                Save
+              </button>
+              <button onClick={() => setEditingName(false)}>Cancel</button>
+            </div>
+          ) : (
+            <h1 style={{ marginBottom: 6 }}>
+              {t.name}{' '}
+              <button
+                className="btn"
+                style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
+                onClick={() => {
+                  setNameDraft(t.name)
+                  setEditingName(true)
+                }}
+              >
+                ✎ Rename
+              </button>
+            </h1>
+          )}
           <div className="row small">
             <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
             <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
@@ -90,6 +155,11 @@ export default function TournamentDetail() {
           </div>
         </div>
         <div className="row">
+          {t.status === 'active' && (
+            <button className="primary" title="Mark this tournament as completed" onClick={closeTournament}>
+              Close tournament
+            </button>
+          )}
           <button className="danger" onClick={removeTournament}>
             Delete
           </button>
@@ -306,7 +376,7 @@ function MatchRow({
         </div>
         <div className="score-box">
           <input
-            className="score-input"
+            className="score-input no-spin"
             type="number"
             min={0}
             value={home}
@@ -315,7 +385,7 @@ function MatchRow({
           />
           <span className="muted">-</span>
           <input
-            className="score-input"
+            className="score-input no-spin"
             type="number"
             min={0}
             value={away}
@@ -338,9 +408,9 @@ function MatchRow({
       {ready && knockout && (
         <div className="row small muted" style={{ margin: '0 0 0.4rem 0.6rem' }}>
           Penalties (if level):
-          <input type="number" min={0} style={{ width: 52 }} value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />
+          <input className="no-spin" type="number" min={0} style={{ width: 52 }} value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />
           <span>-</span>
-          <input type="number" min={0} style={{ width: 52 }} value={ap} disabled={busy} onChange={(e) => setAp(e.target.value)} />
+          <input className="no-spin" type="number" min={0} style={{ width: 52 }} value={ap} disabled={busy} onChange={(e) => setAp(e.target.value)} />
         </div>
       )}
       {error && <div className="error">{error}</div>}

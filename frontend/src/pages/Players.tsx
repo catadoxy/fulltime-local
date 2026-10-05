@@ -6,7 +6,6 @@ import type { Player } from '../types'
 export default function Players() {
   const [players, setPlayers] = useState<Player[]>([])
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
   const [error, setError] = useState('')
 
   const load = () => api.players().then(setPlayers).catch((e) => setError(e.message))
@@ -19,9 +18,8 @@ export default function Players() {
     e.preventDefault()
     setError('')
     try {
-      await api.createPlayer({ name: name.trim(), email: email || null })
+      await api.createPlayer({ name: name.trim() })
       setName('')
-      setEmail('')
       load()
     } catch (err: any) {
       setError(err.message)
@@ -47,10 +45,6 @@ export default function Players() {
           <label>Name</label>
           <input className="grow" style={{ width: '100%' }} value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
-        <div className="grow">
-          <label>Email (optional)</label>
-          <input style={{ width: '100%' }} value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
         <button className="primary" type="submit" style={{ alignSelf: 'flex-end' }}>
           Add player
         </button>
@@ -62,7 +56,6 @@ export default function Players() {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Email</th>
               <th style={{ width: 90 }}>Rating</th>
               <th style={{ width: 130 }}>Tournaments</th>
               <th style={{ width: 90 }}></th>
@@ -74,7 +67,6 @@ export default function Players() {
                 <td>
                   <Link to={`/players/${p.id}`}>{p.name}</Link>
                 </td>
-                <td className="muted">{p.email || '—'}</td>
                 <td>
                   <span className="badge" title={`Elo ${p.elo ?? 1000}`}>
                     {p.rating}

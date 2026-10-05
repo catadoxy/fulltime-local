@@ -57,6 +57,8 @@ export const api = {
     }),
   deleteTournament: (id: number) =>
     http<void>(`/api/tournaments/${id}`, { method: 'DELETE' }),
+  closeTournament: (id: number) =>
+    http<TournamentDetail>(`/api/tournaments/${id}/close`, { method: 'POST' }),
 
   matches: (id: number) => http<Match[]>(`/api/tournaments/${id}/matches`),
   standings: (id: number) => http<{ tables: Table[] }>(`/api/tournaments/${id}/standings`),

@@ -136,6 +136,9 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .match-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
 .score-box { display: flex; align-items: center; justify-content: center; gap: 0.3rem; white-space: nowrap; }
 .score-input { width: 48px; text-align: center; }
+.no-spin { -moz-appearance: textfield; appearance: textfield; }
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .pitch { color: var(--muted); font-size: 0.78rem; }
 .page-head { margin-bottom: 1.5rem; }
 .round-header {
