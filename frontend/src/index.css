@@ -430,7 +430,31 @@ tr.leader td:first-child { border-left: 3px solid var(--amber); }
 .h2h-name { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
 .h2h-name.away { text-align: right; }
 .h2h-score { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; font-variant-numeric: tabular-nums; }
-.compare-table td.num { font-family: var(--font-display); font-weight: 650; }
+.compare-table { max-width: 720px; margin: 0 auto; }
+.compare-table th {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--chalk);
+  font-family: var(--font-display);
+  font-weight: 650;
+}
+.compare-table td { text-align: center; }
+.cmp-val {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.cmp-val.win { color: var(--grass); }
+.cmp-metric { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.cmp-section td {
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 650;
+  color: var(--muted);
+  padding-top: 1rem;
+  border-bottom: 1px solid var(--line);
+}
 
 /* ---- Fixtures ---- */
 .round-header {
