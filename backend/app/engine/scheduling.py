@@ -1,6 +1,6 @@
 """Fixture scheduling across a limited number of pitches / TVs.
 
-The legacy app lets several matches run at once (one per pitch) and tries to give
+The original app lets several matches run at once (one per pitch) and tries to give
 each player a fair rest between their own games, while spreading the load evenly
 over the pitches. This module reproduces that idea:
 

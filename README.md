@@ -1,8 +1,8 @@
 # FullTime Local
 
-A self-hosted, browser-based tournament manager — inspired by the **Virtual
-Competition Manager** app — that runs locally (Docker or bare Python) and can
-import your existing legacy history.
+A self-hosted, browser-based tournament manager for friend game nights. Runs
+locally (Docker or bare Python) and can import history from a legacy encrypted
+database export.
 
 Built with **FastAPI + SQLite** (backend, `Room`-free clean schema) and a
 **React + Vite + TypeScript** single-page app, served from a single container.
@@ -18,7 +18,7 @@ Built with **FastAPI + SQLite** (backend, `Room`-free clean schema) and a
   - Swiss system (auto-paired each round)
   - Champions League (league phase → knockout)
 - **Fair auto-scheduling** across a limited number of **pitches / TVs**, with
-  rest between a player's own games (ported from the legacy idea).
+  rest between a player's own games.
 - **Result entry** with automatic standings, knockout advancement, bracket view
   and champion detection.
 - **Player management** and per-player ratings.
@@ -27,9 +27,9 @@ Built with **FastAPI + SQLite** (backend, `Room`-free clean schema) and a
 - **Games tab** — record one-off / friendly matches outside any tournament; they
   count toward each player's stats and rating.
 - **Optional password** — set `FTL_PASSWORD` to require a shared login.
-- **Import your legacy database** — upload the original encrypted
-  `legacy_database_*.db` export *or* a decrypted `.sqlite`. It decrypts
-  automatically and preserves your historical tournaments, matches and champions.
+- **Import a legacy database** — upload an original encrypted
+  `*_database_*.db` export *or* a decrypted `.sqlite`. It decrypts
+  automatically and preserves historical tournaments, matches and champions.
 - **Docker-ready**, single port, data persisted on a mounted volume.
 
 ---
@@ -125,21 +125,21 @@ always consistent with the recorded results.
 
 ---
 
-## Importing your existing legacy data
+## Importing your existing data
 
-1. Open **Import** in the app.
+1. Open **Data** in the app.
 2. Upload either:
-   - your original encrypted export `legacy_database_<timestamp>.db`, or
+   - an original encrypted export `<name>_database_<timestamp>.db`, or
    - the decrypted `.sqlite` file.
 3. Historical tournaments are added as `completed`, with players, matches and
    champions preserved.
 
-The decryption routine (AES-256/ECB with a key derived from the app package
-name) is also available standalone:
+The decryption routine (AES-256/ECB with a key derived from the source app's
+package name) is also available standalone:
 
 ```bash
-python decrypt_export.py "legacy_database_1791128201989.db"
-# -> writes legacy_database_1791128201989_decrypted.sqlite
+python decrypt_export.py "export.db"
+# -> writes export_decrypted.sqlite
 ```
 
 ---
@@ -151,7 +151,7 @@ All optional, via environment variables:
 | Variable             | Default                    | Purpose                                  |
 | -------------------- | -------------------------- | ---------------------------------------- |
 | `FTL_DATA_DIR`       | `backend/data`             | Directory holding the SQLite file        |
-| `FTL_DATABASE_URL`   | `sqlite:///<DATA_DIR>/fulltime.db` | Override the DB URL entirely          |
+| `FTL_DATABASE_URL`   | `sqlite:///<DATA_DIR>/fulltime.db` | Override the DB URL entirely    |
 | `FTL_FRONTEND_DIR`   | `frontend/dist`            | Where the built SPA is served from       |
 | `FTL_PASSWORD`       | *(unset)*                  | If set, require this shared password to log in |
 | `FTL_SECRET`         | auto (file in data dir)    | Signing key for the session cookie       |
@@ -181,7 +181,7 @@ backend/
     models.py          Player, Tournament, Group, Participant, Match
     schemas.py         Pydantic request/response models
     serializers.py     ORM -> API dicts
-    legacy_import.py      legacy import (decrypts encrypted exports too)
+    legacy_import.py   Legacy import (decrypts encrypted exports too)
     engine/            pure algorithms: round_robin, knockout, swiss, scheduling
     services/          fixtures (creation), standings, results (progression)
     routers/           players, tournaments, meta/import

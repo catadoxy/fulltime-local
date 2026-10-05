@@ -90,7 +90,7 @@ export default function Players() {
             {players.length === 0 && (
               <tr>
                 <td colSpan={4} className="muted">
-                  No players yet. Add some above, or import your legacy database.
+                  No players yet. Add some above, or import a legacy database.
                 </td>
               </tr>
             )}

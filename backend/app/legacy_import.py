@@ -1,9 +1,9 @@
-"""Import an existing legacy tournament manager database.
+"""Import a legacy encrypted database export (interoperability).
 
-Accepts either the decrypted ``.sqlite`` file or the original encrypted
-``.db`` export (it is decrypted on the fly using the same routine the phone app
-uses). Historical tournaments are imported as completed records so their
-matches and stats are preserved.
+Accepts either a decrypted ``.sqlite`` file or the original encrypted ``.db``
+export (decrypted on the fly using the export's own scheme). Historical
+tournaments are imported as completed records so their matches and stats are
+preserved.
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def _decrypt(data: bytes) -> bytes:
         return pt
     if pt[1:17] == SQLITE_MAGIC:
         return pt[1:]  # strip the version byte used by exports
-    raise ValueError("Not a legacy encrypted database (decryption did not yield SQLite)")
+    raise ValueError("Not a recognized encrypted export (decryption did not yield SQLite)")
 
 
 def _to_sqlite(data: bytes) -> sqlite3.Connection:
@@ -83,7 +83,7 @@ def import_legacy(db: Session, data: bytes, *, progress=None) -> dict:
 
     tables = {r[0] for r in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     if "tournoi" not in tables or "matches" not in tables:
-        raise ValueError("File does not look like a legacy database")
+        raise ValueError("File does not look like a supported database export")
 
     cache: dict[str, int] = {}
     stats = {"players": 0, "tournaments": 0, "matches": 0, "skipped": 0}
@@ -123,7 +123,7 @@ def import_legacy(db: Session, data: bytes, *, progress=None) -> dict:
             stats["skipped"] += 1
             continue
 
-        # The legacy schema has no creation timestamp; use the tournament's start
+        # The source schema has no creation timestamp; use the tournament's start
         # date (falling back to its end date) as the effective creation date.
         start_dt = _parse_datetime(trow["dateDebut"]) or _parse_datetime(trow["dateFin"])
         end_dt = _parse_datetime(trow["dateFin"])

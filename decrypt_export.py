@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Decrypt a legacy tournament manager (legacy) database export.
+Decrypt a legacy tournament-manager database export.
 
-The legacy Android app (legacy.app) exports the Room/SQLite
-database as:
+The source app exports its Room/SQLite database as:
     plaintext = <1 version byte> + <raw SQLite file bytes>
 encrypted with AES-256 in ECB mode and PKCS5/PKCS7 padding.
 
-Key derivation (from the app's sn.a / sn.d classes):
+Key derivation (from the source app's sn.a / sn.d classes):
     keyString = Android Base64.encodeToString(
                     (packageName + ".1124090819881992").getBytes(UTF-8),
                     Base64.DEFAULT)

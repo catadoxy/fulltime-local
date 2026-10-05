@@ -326,7 +326,7 @@ def test_backup_export():
     assert "attachment" in r.headers.get("content-disposition", "")
 
 
-def test_import_legacy_synthetic(tmp_path):
+def test_import_synthetic(tmp_path):
     _reset()
     src = tmp_path / "export.sqlite"
     con = sqlite3.connect(src)

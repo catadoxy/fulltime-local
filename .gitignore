@@ -14,5 +14,5 @@ data/
 # local agent skills (keep out of the repo)
 .agents/
 
-# personal legacy data — never commit these
-legacy_database_*.db
+# personal database exports — never commit these
+*_database_*.db
