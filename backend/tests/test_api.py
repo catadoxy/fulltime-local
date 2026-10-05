@@ -190,6 +190,61 @@ def test_auto_rating():
     assert stats["totals"]["elo"] == winner["elo"]
 
 
+def test_double_round_league():
+    _reset()
+    ids = _make_players(4)
+    tid = client.post(
+        "/api/tournaments",
+        json={
+            "name": "Home & Away",
+            "format": "league",
+            "player_ids": ids,
+            "settings": {"double_round": True},
+        },
+    ).json()["id"]
+    matches = client.get(f"/api/tournaments/{tid}/matches").json()
+    assert len(matches) == 12  # 4 players x 3 opponents x 2 legs
+    from collections import Counter
+
+    unordered = Counter(frozenset((m["home_id"], m["away_id"])) for m in matches)
+    assert len(unordered) == 6 and all(v == 2 for v in unordered.values())
+    ordered = Counter((m["home_id"], m["away_id"]) for m in matches)
+    assert len(ordered) == 12 and all(v == 1 for v in ordered.values())
+
+
+def test_games():
+    _reset()
+    ids = _make_players(3)
+    r = client.post(
+        "/api/games",
+        json={"home_id": ids[0], "away_id": ids[1], "home_score": 2, "away_score": 1},
+    )
+    assert r.status_code == 201, r.text
+    games = client.get("/api/games").json()
+    assert len(games) == 1
+    assert games[0]["home_name"] and games[0]["away_name"]
+
+    # Games count toward career stats and ratings.
+    stats = client.get(f"/api/players/{ids[0]}/stats").json()
+    assert stats["totals"]["played"] == 1
+    assert any(h["format"] == "friendly" for h in stats["history"])
+
+    listing = client.get("/api/players").json()
+    winner = next(x for x in listing if x["id"] == ids[0])
+    loser = next(x for x in listing if x["id"] == ids[1])
+    assert winner["elo"] > 1000 > loser["elo"]
+
+    # Same player can't play themselves.
+    bad = client.post(
+        "/api/games",
+        json={"home_id": ids[0], "away_id": ids[0], "home_score": 1, "away_score": 0},
+    )
+    assert bad.status_code == 400
+
+    assert client.delete(f"/api/games/{games[0]['id']}").status_code == 204
+    assert client.get("/api/games").json() == []
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

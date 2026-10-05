@@ -1,4 +1,5 @@
 import type {
+  Game,
   Match,
   Meta,
   Player,
@@ -39,6 +40,11 @@ export const api = {
     http<Player>(`/api/players/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deletePlayer: (id: number) => http<void>(`/api/players/${id}`, { method: 'DELETE' }),
   playerStats: (id: number) => http<PlayerStats>(`/api/players/${id}/stats`),
+
+  games: () => http<Game[]>('/api/games'),
+  createGame: (data: Record<string, unknown>) =>
+    http<Game>('/api/games', { method: 'POST', body: JSON.stringify(data) }),
+  deleteGame: (id: number) => http<void>(`/api/games/${id}`, { method: 'DELETE' }),
 
   tournaments: () => http<Tournament[]>('/api/tournaments'),
   tournament: (id: number) => http<TournamentDetail>(`/api/tournaments/${id}`),

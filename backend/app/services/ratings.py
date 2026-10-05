@@ -20,7 +20,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Match, Player, Tournament
+from ..models import Game, Match, Player, Tournament
 
 BASE_ELO = 1000.0
 ELO_PER_RATING_POINT = 8.0
@@ -47,6 +47,8 @@ def compute_ratings(db: Session) -> dict[int, dict]:
         for p in players
     }
 
+    # Build one chronological stream of results: tournament matches + friendlies.
+    events: list[tuple] = []
     rows = db.execute(
         select(Match, Tournament)
         .join(Tournament, Match.tournament_id == Tournament.id)
@@ -56,19 +58,28 @@ def compute_ratings(db: Session) -> dict[int, dict]:
             Match.away_id.is_not(None),
         )
     ).all()
-
-    def sort_key(row) -> tuple:
-        m, t = row
+    for m, t in rows:
         day = t.start_date or (t.created_at.date() if t.created_at else date.min)
-        return (day, t.id, m.round_number, m.match_number, m.id)
+        events.append(
+            (
+                (day, 1, t.id, m.round_number, m.match_number, m.id),
+                m.home_id,
+                m.away_id,
+                m.home_score or 0,
+                m.away_score or 0,
+            )
+        )
+    for g in db.execute(select(Game)).scalars().all():
+        events.append(
+            ((g.played_at, 0, 0, 0, 0, g.id), g.home_id, g.away_id, g.home_score, g.away_score)
+        )
 
-    for m, _t in sorted(rows, key=sort_key):
-        a = state.get(m.home_id)
-        b = state.get(m.away_id)
-        if a is None or b is None or m.home_id == m.away_id:
+    for _key, home_id, away_id, hs, as_ in sorted(events, key=lambda e: e[0]):
+        a = state.get(home_id)
+        b = state.get(away_id)
+        if a is None or b is None or home_id == away_id:
             continue
 
-        hs, as_ = m.home_score or 0, m.away_score or 0
         if hs > as_:
             s_home = 1.0
         elif hs < as_:

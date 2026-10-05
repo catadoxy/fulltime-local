@@ -111,8 +111,8 @@ export interface PlayerTotals {
 export interface PlayerHistoryRow {
   tournament_id: number
   name: string
-  format: TournamentFormat
-  status: 'active' | 'completed'
+  format: string
+  status: string
   start_date: string | null
   played: number
   won: number
@@ -122,6 +122,18 @@ export interface PlayerHistoryRow {
   goals_against: number
   champion: boolean
   rank: number | null
+}
+
+export interface Game {
+  id: number
+  played_at: string
+  home_id: number
+  away_id: number
+  home_name: string | null
+  away_name: string | null
+  home_score: number
+  away_score: number
+  note: string | null
 }
 
 export interface PlayerStats {

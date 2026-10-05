@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Match, Participant, Player, Tournament
+from ..models import Game, Match, Participant, Player, Tournament
 from ..schemas import PlayerCreate, PlayerOut, PlayerUpdate
 from ..services.ratings import compute_ratings
 from ..services.standings import standings
@@ -172,6 +172,54 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
         totals["goals_for"] += gf
         totals["goals_against"] += ga
         totals["titles"] += 1 if champion else 0
+
+    # Standalone friendly games also count toward a player's career stats.
+    games = (
+        db.execute(
+            select(Game).where(or_(Game.home_id == player_id, Game.away_id == player_id))
+        )
+        .scalars()
+        .all()
+    )
+    if games:
+        gplayed = gwon = gdrawn = glost = ggf = gga = 0
+        for g in games:
+            if g.home_id == player_id:
+                f, a = g.home_score, g.away_score
+            else:
+                f, a = g.away_score, g.home_score
+            gplayed += 1
+            ggf += f
+            gga += a
+            if f > a:
+                gwon += 1
+            elif f < a:
+                glost += 1
+            else:
+                gdrawn += 1
+        history.append(
+            {
+                "tournament_id": 0,
+                "name": "Friendly games",
+                "format": "friendly",
+                "status": "active",
+                "start_date": None,
+                "played": gplayed,
+                "won": gwon,
+                "drawn": gdrawn,
+                "lost": glost,
+                "goals_for": ggf,
+                "goals_against": gga,
+                "champion": False,
+                "rank": None,
+            }
+        )
+        totals["played"] += gplayed
+        totals["won"] += gwon
+        totals["drawn"] += gdrawn
+        totals["lost"] += glost
+        totals["goals_for"] += ggf
+        totals["goals_against"] += gga
 
     history.sort(key=lambda h: (h["start_date"] or "", h["tournament_id"]), reverse=True)
     totals["win_rate"] = round(100 * totals["won"] / totals["played"]) if totals["played"] else 0

@@ -22,6 +22,8 @@ Built with **FastAPI + SQLite** (backend, `Room`-free clean schema) and a
 - **Result entry** with automatic standings, knockout advancement, bracket view
   and champion detection.
 - **Player management** and per-player ratings.
+- **Games tab** — record one-off / friendly matches outside any tournament; they
+  count toward each player's stats and rating.
 - **Import your legacy database** — upload the original encrypted
   `legacy_database_*.db` export *or* a decrypted `.sqlite`. It decrypts
   automatically and preserves your historical tournaments, matches and champions.

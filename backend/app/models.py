@@ -121,3 +121,21 @@ class Match(Base):
     home: Mapped[Player | None] = relationship(foreign_keys=[home_id])
     away: Mapped[Player | None] = relationship(foreign_keys=[away_id])
     winner: Mapped[Player | None] = relationship(foreign_keys=[winner_id])
+
+
+class Game(Base):
+    """A one-off / friendly match that isn't part of any tournament."""
+
+    __tablename__ = "games"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    played_at: Mapped[date] = mapped_column(Date, default=date.today)
+    home_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    away_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    home_score: Mapped[int] = mapped_column(Integer, default=0)
+    away_score: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str | None] = mapped_column(String(500), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    home: Mapped[Player] = relationship(foreign_keys=[home_id])
+    away: Mapped[Player] = relationship(foreign_keys=[away_id])

@@ -116,6 +116,29 @@ class ResultIn(BaseModel):
     away_pen: int | None = Field(default=None, ge=0, le=999)
 
 
+# ---------- Single games (friendlies) ----------
+class GameCreate(BaseModel):
+    home_id: int
+    away_id: int
+    home_score: int = Field(ge=0, le=999)
+    away_score: int = Field(ge=0, le=999)
+    played_at: date | None = None
+    note: str | None = None
+
+
+class GameOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    played_at: date
+    home_id: int
+    away_id: int
+    home_name: str | None = None
+    away_name: str | None = None
+    home_score: int
+    away_score: int
+    note: str | None = None
+
+
 class StandingRow(BaseModel):
     player_id: int
     player_name: str

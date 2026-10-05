@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { FORMAT_LABELS } from '../labels'
-import type { PlayerStats } from '../types'
+import type { PlayerStats, TournamentFormat } from '../types'
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -88,9 +88,16 @@ export default function PlayerDetail() {
             {history.map((h) => (
               <tr key={h.tournament_id}>
                 <td>
-                  <Link to={`/t/${h.tournament_id}`}>{h.name}</Link>
+                  {h.tournament_id ? (
+                    <Link to={`/t/${h.tournament_id}`}>{h.name}</Link>
+                  ) : (
+                    h.name
+                  )}
                 </td>
-                <td className="muted small">{FORMAT_LABELS[h.format] ?? h.format}</td>
+                <td className="muted small">
+                  {FORMAT_LABELS[h.format as TournamentFormat] ??
+                    (h.format === 'friendly' ? 'Friendlies' : h.format)}
+                </td>
                 <td>{h.played}</td>
                 <td>{h.won}</td>
                 <td>{h.drawn}</td>
