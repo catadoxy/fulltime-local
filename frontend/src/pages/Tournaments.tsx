@@ -136,7 +136,7 @@ export default function Tournaments() {
               <th>Format</th>
               <th>Status</th>
               <th>Champion</th>
-              <th>Created</th>
+              <th>Date</th>
               <th></th>
             </tr>
           </thead>
@@ -151,7 +151,7 @@ export default function Tournaments() {
                   <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
                 </td>
                 <td>{t.champion_id ? championNames.get(t.champion_id) ?? `#${t.champion_id}` : '—'}</td>
-                <td className="muted small">{formatDate(t.created_at)}</td>
+                <td className="muted small">{formatDate(t.start_date ?? t.created_at)}</td>
                 <td>
                   <div className="row" style={{ justifyContent: 'flex-end' }}>
                     <Link className="btn" to={`/t/${t.id}`}>
@@ -178,10 +178,13 @@ export default function Tournaments() {
   )
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return '—'
-  const hasTz = /[zZ]|[+-]\d\d:\d\d$/.test(iso)
-  const d = new Date(hasTz ? iso : `${iso}Z`) // timestamps are stored in UTC
+function formatDate(value: string): string {
+  if (!value) return '—'
+  const dateOnly = value.length === 10
+  const hasTz = /[zZ]|[+-]\d\d:\d\d$/.test(value)
+  const iso = dateOnly || hasTz ? value : `${value}Z` // timestamps are stored in UTC
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 

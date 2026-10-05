@@ -12,6 +12,7 @@ import hashlib
 import os
 import sqlite3
 import tempfile
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -122,14 +123,20 @@ def import_legacy(db: Session, data: bytes, *, progress=None) -> dict:
             stats["skipped"] += 1
             continue
 
+        # The legacy schema has no creation timestamp; use the tournament's start
+        # date (falling back to its end date) as the effective creation date.
+        start_dt = _parse_datetime(trow["dateDebut"]) or _parse_datetime(trow["dateFin"])
+        end_dt = _parse_datetime(trow["dateFin"])
+
         tournament = Tournament(
             name=name,
             format=fmt,
             status="completed",
             nb_pitches=max([m["numTv"] or 1 for m in matches] + [1]),
             settings={"imported": True, "source_id": tid},
-            start_date=_parse_date(trow["dateDebut"]),
-            end_date=_parse_date(trow["dateFin"]),
+            start_date=start_dt.date() if start_dt else None,
+            end_date=end_dt.date() if end_dt else None,
+            created_at=start_dt or datetime.utcnow(),
         )
         db.add(tournament)
         db.flush()
@@ -214,18 +221,25 @@ def import_legacy(db: Session, data: bytes, *, progress=None) -> dict:
     return stats
 
 
-def _parse_date(value):
+def _parse_datetime(value):
     if not value:
         return None
-    from datetime import date, datetime
-
     text = str(value).strip()
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y", "%d.%m.%Y"):
+    for fmt in (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y",
+        "%d.%m.%Y",
+    ):
         try:
-            return datetime.strptime(text, fmt).date()
+            return datetime.strptime(text, fmt)
         except ValueError:
             continue
-    try:
-        return date.fromisoformat(text[:10])
-    except ValueError:
-        return None
+    return None
+
+
+def _parse_date(value):
+    dt = _parse_datetime(value)
+    return dt.date() if dt else None

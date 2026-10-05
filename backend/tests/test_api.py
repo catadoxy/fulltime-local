@@ -209,3 +209,5 @@ def test_import_legacy_synthetic(tmp_path):
     tours = client.get("/api/tournaments").json()
     assert tours[0]["name"] == "Old League"
     assert tours[0]["status"] == "completed"
+    assert tours[0]["start_date"] == "2016-01-01"
+    assert tours[0]["created_at"].startswith("2016-01-01")
