@@ -221,7 +221,7 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
         totals["goals_for"] += ggf
         totals["goals_against"] += gga
 
-    history.sort(key=lambda h: (h["start_date"] or "", h["tournament_id"]), reverse=True)
+    history.sort(key=lambda h: (str(h["start_date"] or ""), h["tournament_id"]), reverse=True)
     totals["win_rate"] = round(100 * totals["won"] / totals["played"]) if totals["played"] else 0
     totals["elo"] = rating["elo"]
     totals["rating"] = rating["rating"]

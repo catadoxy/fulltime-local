@@ -293,19 +293,6 @@ function MatchRow({
     }
   }
 
-  async function clear() {
-    if (!confirm('Clear this result?')) return
-    setBusy(true)
-    try {
-      await api.clearResult(tid, match.id)
-      onChange()
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const homeWin = match.played && match.winner_id != null && match.winner_id === match.home_id
   const awayWin = match.played && match.winner_id != null && match.winner_id === match.away_id
 
@@ -344,11 +331,6 @@ function MatchRow({
           {canSave && (
             <button className="primary" disabled={busy} onClick={save}>
               Save
-            </button>
-          )}
-          {match.played && (
-            <button className="danger" disabled={busy} onClick={clear} title="Clear result">
-              ✕
             </button>
           )}
         </div>

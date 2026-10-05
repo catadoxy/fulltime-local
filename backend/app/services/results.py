@@ -134,9 +134,33 @@ def _post_process(db: Session, t: Tournament, m: Match) -> None:
 
     if m.stage == "final" and m.winner_id is not None:
         t.champion_id = m.winner_id
-        t.status = "completed"
-        t.end_date = date.today()
         db.flush()
+
+    _maybe_complete(db, t)
+
+
+def _maybe_complete(db: Session, t: Tournament) -> None:
+    """Mark a tournament completed once every match has been played."""
+    if t.status == "completed":
+        return
+    unplayed = db.execute(
+        select(Match).where(Match.tournament_id == t.id, Match.played.is_(False)).limit(1)
+    ).scalar_one_or_none()
+    if unplayed is not None:
+        return
+
+    # League / Swiss have no final — the table leader is the champion.
+    if t.champion_id is None and t.format in ("league", "swiss"):
+        from .standings import standings
+
+        table = standings(db, t)
+        if table:
+            t.champion_id = table[0]["player_id"]
+
+    t.status = "completed"
+    if t.end_date is None:
+        t.end_date = date.today()
+    db.flush()
 
 
 def _fill_third_place(db: Session, t: Tournament) -> None:

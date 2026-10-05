@@ -245,6 +245,49 @@ def test_games():
     assert client.get("/api/games").json() == []
 
 
+def test_league_auto_completes():
+    _reset()
+    ids = _make_players(2)
+    tid = client.post(
+        "/api/tournaments", json={"name": "Auto", "format": "league", "player_ids": ids}
+    ).json()["id"]
+    m = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+    client.post(
+        f"/api/tournaments/{tid}/matches/{m['id']}/result",
+        json={"home_score": 2, "away_score": 1},
+    )
+    t = client.get(f"/api/tournaments/{tid}").json()
+    assert t["status"] == "completed"
+    assert t["champion_id"] == m["home_id"]
+
+
+def test_stats_with_dates_and_games():
+    # Regression: imported tournaments have real dates; friendlies have none.
+    _reset()
+    ids = _make_players(2)
+    tid = client.post(
+        "/api/tournaments",
+        json={
+            "name": "Dated",
+            "format": "league",
+            "player_ids": ids,
+            "start_date": "2020-05-05",
+        },
+    ).json()["id"]
+    m = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+    client.post(
+        f"/api/tournaments/{tid}/matches/{m['id']}/result",
+        json={"home_score": 1, "away_score": 0},
+    )
+    client.post(
+        "/api/games",
+        json={"home_id": ids[0], "away_id": ids[1], "home_score": 2, "away_score": 2},
+    )
+    r = client.get(f"/api/players/{ids[0]}/stats")
+    assert r.status_code == 200, r.text
+    assert any(h["format"] == "friendly" for h in r.json()["history"])
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")
