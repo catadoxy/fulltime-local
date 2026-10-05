@@ -99,6 +99,27 @@ $env:FTL_FRONTEND_DIR="../frontend/dist"; uvicorn app.main:app --port 8756
 
 ---
 
+## Player ratings
+
+Ratings are **calculated automatically** from results — there is nothing to set
+by hand. They use an **Elo** system (the chess/tennis method), which accounts for
+*who* you beat, not just how often:
+
+- Everyone starts at **1000 Elo**.
+- After a match: `expected = 1 / (1 + 10^((opponent − you)/400))`, then
+  `you += K × (actual − expected)` (`actual` = 1 win / 0.5 draw / 0 loss).
+- `K` is higher for provisional players (<10 matches → 40; <30 → 24; else 16),
+  so early results move quickly and it settles over time.
+- A mild margin-of-victory bonus is applied (`1 + min(goalDiff, 4) × 0.125`).
+- Penalty shoot-outs count as draws.
+
+The familiar **0–100** figure is derived as `round(50 + (elo − 1000) / 8)`:
+1000 → 50, 1200 → 75, 800 → 25. Elo is shown alongside it on a player's profile.
+Ratings are recomputed from your full match history on every request, so they are
+always consistent with the recorded results.
+
+---
+
 ## Importing your existing legacy data
 
 1. Open **Import** in the app.

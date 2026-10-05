@@ -32,6 +32,7 @@ class PlayerOut(PlayerBase):
     id: int
     tournaments: int = 0
     titles: int = 0
+    elo: int = 1000
 
 
 # ---------- Tournaments ----------

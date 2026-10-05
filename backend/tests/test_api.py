@@ -168,6 +168,28 @@ def test_player_stats():
     assert row["tournaments"] == 1
 
 
+def test_auto_rating():
+    _reset()
+    ids = _make_players(2)
+    tid = client.post(
+        "/api/tournaments", json={"name": "R", "format": "league", "player_ids": ids}
+    ).json()["id"]
+    m = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+    client.post(
+        f"/api/tournaments/{tid}/matches/{m['id']}/result",
+        json={"home_score": 3, "away_score": 0},
+    )
+    listing = client.get("/api/players").json()
+    winner = next(x for x in listing if x["id"] == m["home_id"])
+    loser = next(x for x in listing if x["id"] == m["away_id"])
+    assert winner["elo"] > 1000 > loser["elo"]
+    assert winner["rating"] > 50 > loser["rating"]
+
+    stats = client.get(f"/api/players/{winner['id']}/stats").json()
+    assert stats["totals"]["rating"] == winner["rating"]
+    assert stats["totals"]["elo"] == winner["elo"]
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

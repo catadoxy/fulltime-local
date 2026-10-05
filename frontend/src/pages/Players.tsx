@@ -63,6 +63,7 @@ export default function Players() {
             <tr>
               <th>Name</th>
               <th>Email</th>
+              <th style={{ width: 90 }}>Rating</th>
               <th style={{ width: 130 }}>Tournaments</th>
               <th style={{ width: 90 }}></th>
             </tr>
@@ -74,6 +75,11 @@ export default function Players() {
                   <Link to={`/players/${p.id}`}>{p.name}</Link>
                 </td>
                 <td className="muted">{p.email || '—'}</td>
+                <td>
+                  <span className="badge" title={`Elo ${p.elo ?? 1000}`}>
+                    {p.rating}
+                  </span>
+                </td>
                 <td>
                   <span className="badge">{p.tournaments ?? 0}</span>
                   {!!p.titles && (

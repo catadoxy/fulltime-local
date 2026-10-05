@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Match, Participant, Player, Tournament
 from ..schemas import PlayerCreate, PlayerOut, PlayerUpdate
+from ..services.ratings import compute_ratings
 from ..services.standings import standings
 
 router = APIRouter(prefix="/api/players", tags=["players"])
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/api/players", tags=["players"])
 @router.get("", response_model=list[PlayerOut])
 def list_players(db: Session = Depends(get_db)):
     players = db.execute(select(Player).order_by(Player.name)).scalars().all()
+    ratings = compute_ratings(db)
 
     counts = dict(
         db.execute(
@@ -35,7 +37,8 @@ def list_players(db: Session = Depends(get_db)):
             "name": p.name,
             "email": p.email,
             "picture": p.picture,
-            "rating": p.rating,
+            "rating": ratings.get(p.id, {}).get("rating", 50),
+            "elo": ratings.get(p.id, {}).get("elo", 1000),
             "tournaments": counts.get(p.id, 0),
             "titles": titles.get(p.id, 0),
         }
@@ -87,6 +90,8 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
     player = db.get(Player, player_id)
     if not player:
         raise HTTPException(404, "Player not found")
+
+    rating = compute_ratings(db).get(player_id, {"elo": 1000, "rating": 50})
 
     parts = (
         db.execute(select(Participant).where(Participant.player_id == player_id))
@@ -170,9 +175,15 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
 
     history.sort(key=lambda h: (h["start_date"] or "", h["tournament_id"]), reverse=True)
     totals["win_rate"] = round(100 * totals["won"] / totals["played"]) if totals["played"] else 0
+    totals["elo"] = rating["elo"]
+    totals["rating"] = rating["rating"]
+
+    player_data = PlayerOut.model_validate(player).model_dump()
+    player_data["rating"] = rating["rating"]
+    player_data["elo"] = rating["elo"]
 
     return {
-        "player": PlayerOut.model_validate(player).model_dump(),
+        "player": player_data,
         "totals": totals,
         "history": history,
     }

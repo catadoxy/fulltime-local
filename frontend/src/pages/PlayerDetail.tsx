@@ -55,6 +55,8 @@ export default function PlayerDetail() {
       </div>
 
       <div className="stats-grid" style={{ marginBottom: '1rem' }}>
+        <Stat label="Rating" value={totals.rating} />
+        <Stat label="Elo" value={totals.elo} />
         <Stat label="Tournaments" value={totals.tournaments} />
         <Stat label="🏆 Titles" value={totals.titles} />
         <Stat label="Matches played" value={totals.played} />

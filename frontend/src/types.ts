@@ -11,6 +11,7 @@ export interface Player {
   email?: string | null
   picture?: string | null
   rating: number
+  elo?: number
   tournaments?: number
   titles?: number
 }
@@ -103,6 +104,8 @@ export interface PlayerTotals {
   goals_against: number
   titles: number
   win_rate: number
+  elo: number
+  rating: number
 }
 
 export interface PlayerHistoryRow {
