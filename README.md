@@ -69,6 +69,26 @@ To stop: `docker compose down` (the DB is a bind mount and is not removed).
 
 ---
 
+## Releases &amp; images
+
+The image is published to GitHub Container Registry by
+`.github/workflows/docker-publish.yml`:
+
+- Every push to `main` publishes `ghcr.io/catadoxy/fulltime-local:latest` plus a
+  `sha-…` tag.
+- Pushing a version tag publishes semver tags **and** creates a GitHub Release:
+
+  ```bash
+  git tag v0.2.0
+  git push origin v0.2.0
+  # -> ghcr.io/catadoxy/fulltime-local:0.2.0, :0.2, :0  + a GitHub Release
+  ```
+
+Pin a specific version in production by changing the compose image to e.g.
+`ghcr.io/catadoxy/fulltime-local:0.2.0`. `latest` follows `main`.
+
+---
+
 ## Local development
 
 Two processes: the API and the Vite dev server (which proxies `/api`).
