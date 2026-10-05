@@ -149,6 +149,7 @@ export default function Tournaments() {
               <th>Format</th>
               <th>Status</th>
               <th>Champion</th>
+              <th className="num">Players</th>
               <th>Date</th>
               <th></th>
             </tr>
@@ -165,6 +166,7 @@ export default function Tournaments() {
                   <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
                 </td>
                 <td>{t.champion_id ? championNames.get(t.champion_id) ?? `#${t.champion_id}` : '—'}</td>
+                <td className="num">{t.players ?? 0}</td>
                 <td className="muted small">{formatDate(t.start_date ?? t.created_at)}</td>
                 <td>
                   <div className="row" style={{ justifyContent: 'flex-end' }}>
@@ -180,7 +182,7 @@ export default function Tournaments() {
             ))}
             {tournaments.length === 0 && (
               <tr>
-                <td colSpan={6} className="muted">
+                <td colSpan={7} className="muted">
                   No tournaments yet.
                 </td>
               </tr>

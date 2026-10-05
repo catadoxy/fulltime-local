@@ -49,6 +49,8 @@ def test_league():
     tid = r.json()["id"]
     matches = client.get(f"/api/tournaments/{tid}/matches").json()
     assert len(matches) == 15  # 6 teams round-robin
+    listing = client.get("/api/tournaments").json()
+    assert listing[0]["players"] == 6
     _play_all(tid)
     table = client.get(f"/api/tournaments/{tid}/standings").json()["tables"][0]["rows"]
     assert sum(row["played"] for row in table) == 30  # each match counted twice

@@ -35,6 +35,7 @@ export interface Tournament {
   name: string
   note: string | null
   format: TournamentFormat
+  players?: number
   status: 'active' | 'completed'
   nb_pitches: number
   settings: Record<string, any>
