@@ -1,0 +1,14 @@
+# Build-from-source compose (for development or if you cloned the repo):
+#   docker compose -f docker-compose.build.yml up --build
+services:
+  app:
+    build: .
+    image: ghcr.io/catadoxy/fulltime-local:local
+    container_name: fulltime-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=Europe/Bucharest
+    restart: unless-stopped

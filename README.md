@@ -33,17 +33,34 @@ Built with **FastAPI + SQLite** (backend, `Room`-free clean schema) and a
 
 > Requires Docker with the Compose plugin.
 
+The image is published to GitHub Container Registry, so you can run it **without
+cloning the repo** — just grab `docker-compose.yml` and:
+
 ```bash
-docker compose up --build
+docker compose up -d
 ```
 
 Then open <http://localhost:8000>.
 
+If the package is **private** (the default), log in to the registry first using a
+GitHub Personal Access Token with the `read:packages` scope:
+
+```bash
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u catadoxy --password-stdin
+```
+
+### Build from source instead
+
+```bash
+git clone https://github.com/catadoxy/fulltime-local.git
+cd fulltime-local
+docker compose -f docker-compose.build.yml up --build
+```
+
 - The SQLite database lives in `./data/fulltime.db` on the host (mounted volume).
 - Interactive API docs: <http://localhost:8000/docs>
 
-To stop: `Ctrl+C`, or `docker compose down` (add `-v` only if you want to wipe
-data — note the DB is a bind mount, so it is not removed by `docker compose down`).
+To stop: `docker compose down` (the DB is a bind mount and is not removed).
 
 ---
 
