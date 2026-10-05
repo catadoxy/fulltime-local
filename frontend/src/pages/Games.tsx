@@ -83,29 +83,31 @@ export default function Games() {
             </select>
           </div>
           <div>
-            <label>Score</label>
-            <input
-              className="no-spin"
-              type="number"
-              min={0}
-              style={{ width: 64, textAlign: 'center' }}
-              value={homeScore}
-              onChange={(e) => setHomeScore(e.target.value)}
-            />
-          </div>
-          <span className="muted" style={{ paddingBottom: 8 }}>
-            -
-          </span>
-          <div>
-            <label>&nbsp;</label>
-            <input
-              className="no-spin"
-              type="number"
-              min={0}
-              style={{ width: 64, textAlign: 'center' }}
-              value={awayScore}
-              onChange={(e) => setAwayScore(e.target.value)}
-            />
+            <label htmlFor="game-home-score">Score</label>
+            <div className="row" style={{ gap: '0.35rem' }}>
+              <input
+                id="game-home-score"
+                className="no-spin"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                aria-label="Home score"
+                style={{ width: 64, textAlign: 'center' }}
+                value={homeScore}
+                onChange={(e) => setHomeScore(e.target.value)}
+              />
+              <span className="muted">-</span>
+              <input
+                className="no-spin"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                aria-label="Away score"
+                style={{ width: 64, textAlign: 'center' }}
+                value={awayScore}
+                onChange={(e) => setAwayScore(e.target.value)}
+              />
+            </div>
           </div>
           <div>
             <label>Away</label>

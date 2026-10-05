@@ -28,9 +28,10 @@ export default function TournamentDetail() {
   const [matches, setMatches] = useState<Match[]>([])
   const [tables, setTables] = useState<Table[]>([])
   const [error, setError] = useState('')
-  const [editingName, setEditingName] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
-  const [savingName, setSavingName] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const load = async () => {
     try {
@@ -66,6 +67,12 @@ export default function TournamentDetail() {
   const hasBracket = matches.some((m) => isKnockout(m.stage))
   const hasTables = matches.some((m) => TABLE_STAGES.includes(m.stage))
   const champion = t?.champion_id ? playerNames.get(t.champion_id) : null
+  const qualifiers =
+    t?.format === 'groups_knockout'
+      ? Number(t.settings.qualifiers_per_group ?? 2)
+      : t?.format === 'champions_league'
+        ? Number(t.settings.qualifiers ?? 8)
+        : 1
 
   async function removeTournament() {
     if (!t) return
@@ -80,18 +87,21 @@ export default function TournamentDetail() {
 
   const allPlayed = matches.length > 0 && matches.every((m) => m.played)
 
-  async function saveName() {
+  async function saveDetails() {
     if (!t) return
-    setSavingName(true)
+    setSaving(true)
     setError('')
     try {
-      await api.updateTournament(t.id, { name: nameDraft.trim() || t.name })
-      setEditingName(false)
+      await api.updateTournament(t.id, {
+        name: nameDraft.trim() || t.name,
+        note: noteDraft.trim() || null,
+      })
+      setEditing(false)
       load()
     } catch (e: any) {
       setError(e.message)
     } finally {
-      setSavingName(false)
+      setSaving(false)
     }
   }
 
@@ -115,44 +125,69 @@ export default function TournamentDetail() {
     <div>
       <div className="row between page-head">
         <div className="grow">
-          {editingName ? (
-            <div className="row">
-              <input
-                value={nameDraft}
-                autoFocus
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveName()
-                  if (e.key === 'Escape') setEditingName(false)
-                }}
-                style={{ fontSize: '1.35rem', fontWeight: 700, minWidth: 280 }}
-              />
-              <button className="primary" disabled={savingName} onClick={saveName}>
-                Save
-              </button>
-              <button onClick={() => setEditingName(false)}>Cancel</button>
+          {editing ? (
+            <div style={{ display: 'grid', gap: '0.55rem', maxWidth: 560 }}>
+              <div>
+                <label htmlFor="t-name">Name</label>
+                <input
+                  id="t-name"
+                  value={nameDraft}
+                  autoFocus
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && setEditing(false)}
+                  style={{ width: '100%', fontSize: '1.1rem', fontWeight: 700 }}
+                />
+              </div>
+              <div>
+                <label htmlFor="t-note">Game / note</label>
+                <input
+                  id="t-note"
+                  value={noteDraft}
+                  placeholder="e.g. FIFA 24, Rocket League"
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveDetails()
+                    if (e.key === 'Escape') setEditing(false)
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div className="row">
+                <button className="primary" disabled={saving} onClick={saveDetails}>
+                  Save
+                </button>
+                <button onClick={() => setEditing(false)}>Cancel</button>
+              </div>
             </div>
           ) : (
-            <h1 style={{ marginBottom: 6 }}>
-              {t.name}{' '}
-              <button
-                className="btn"
-                style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
-                onClick={() => {
-                  setNameDraft(t.name)
-                  setEditingName(true)
-                }}
-              >
-                ✎ Rename
-              </button>
-            </h1>
+            <>
+              <h1 style={{ marginBottom: t.note ? 2 : 6 }}>
+                {t.name}{' '}
+                <button
+                  className="btn"
+                  style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
+                  onClick={() => {
+                    setNameDraft(t.name)
+                    setNoteDraft(t.note ?? '')
+                    setEditing(true)
+                  }}
+                >
+                  ✎ Edit
+                </button>
+              </h1>
+              {t.note && (
+                <div className="muted small" style={{ marginBottom: 4 }}>
+                  {t.note}
+                </div>
+              )}
+              <div className="row small">
+                <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
+                <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
+                <span className="muted">{t.nb_pitches} pitch(es)</span>
+                {champion && <span className="badge done">🏆 {champion}</span>}
+              </div>
+            </>
           )}
-          <div className="row small">
-            <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
-            <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
-            <span className="muted">{t.nb_pitches} pitch(es)</span>
-            {champion && <span className="badge done">🏆 {champion}</span>}
-          </div>
         </div>
         <div className="row">
           {t.status === 'active' && (
@@ -176,7 +211,7 @@ export default function TournamentDetail() {
           {tables.map((table, i) => (
             <div key={i} style={{ marginBottom: i < tables.length - 1 ? '1rem' : 0 }}>
               {table.group_name && <div className="row-header">{table.group_name}</div>}
-              <StandingsTable table={table} />
+              <StandingsTable table={table} qualifiers={qualifiers} />
             </div>
           ))}
         </div>
@@ -194,38 +229,38 @@ export default function TournamentDetail() {
   )
 }
 
-function StandingsTable({ table }: { table: Table }) {
+function StandingsTable({ table, qualifiers = 1 }: { table: Table; qualifiers?: number }) {
   return (
     <table>
       <thead>
         <tr>
-          <th>#</th>
+          <th className="num">#</th>
           <th>Player</th>
-          <th>P</th>
-          <th>W</th>
-          <th>D</th>
-          <th>L</th>
-          <th>GF</th>
-          <th>GA</th>
-          <th>GD</th>
-          <th>Pts</th>
+          <th className="num">P</th>
+          <th className="num">W</th>
+          <th className="num">D</th>
+          <th className="num">L</th>
+          <th className="num">GF</th>
+          <th className="num">GA</th>
+          <th className="num">GD</th>
+          <th className="num">Pts</th>
         </tr>
       </thead>
       <tbody>
         {table.rows.map((r, i) => (
-          <tr key={r.player_id}>
-            <td>{i + 1}</td>
+          <tr key={r.player_id} className={i < qualifiers ? 'leader' : undefined}>
+            <td className="num">{i + 1}</td>
             <td>
               <Link to={`/players/${r.player_id}`}>{r.player_name}</Link>
             </td>
-            <td>{r.played}</td>
-            <td>{r.won}</td>
-            <td>{r.drawn}</td>
-            <td>{r.lost}</td>
-            <td>{r.goals_for}</td>
-            <td>{r.goals_against}</td>
-            <td>{r.goal_diff > 0 ? `+${r.goal_diff}` : r.goal_diff}</td>
-            <td className="score">{r.points}</td>
+            <td className="num">{r.played}</td>
+            <td className="num">{r.won}</td>
+            <td className="num">{r.drawn}</td>
+            <td className="num">{r.lost}</td>
+            <td className="num">{r.goals_for}</td>
+            <td className="num">{r.goals_against}</td>
+            <td className="num">{r.goal_diff > 0 ? `+${r.goal_diff}` : r.goal_diff}</td>
+            <td className="num score">{r.points}</td>
           </tr>
         ))}
         {table.rows.length === 0 && (
@@ -369,6 +404,7 @@ function MatchRow({
   return (
     <div>
       <div className="match">
+        <div className="match-gutter" aria-hidden="true" />
         <div className={`team home ${homeWin ? 'won' : ''}`}>
           {nbPitches > 1 && match.pitch != null && <span className="badge small">P{match.pitch}</span>}
           <span className="team-name">{match.home_name ?? <span className="muted">TBD</span>}</span>
@@ -378,7 +414,9 @@ function MatchRow({
           <input
             className="score-input no-spin"
             type="number"
+            inputMode="numeric"
             min={0}
+            aria-label={`${match.home_name ?? 'Home'} score`}
             value={home}
             disabled={!ready || busy}
             onChange={(e) => setHome(e.target.value)}
@@ -387,7 +425,9 @@ function MatchRow({
           <input
             className="score-input no-spin"
             type="number"
+            inputMode="numeric"
             min={0}
+            aria-label={`${match.away_name ?? 'Away'} score`}
             value={away}
             disabled={!ready || busy}
             onChange={(e) => setAway(e.target.value)}
@@ -408,9 +448,9 @@ function MatchRow({
       {ready && knockout && (
         <div className="row small muted" style={{ margin: '0 0 0.4rem 0.6rem' }}>
           Penalties (if level):
-          <input className="no-spin" type="number" min={0} style={{ width: 52 }} value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />
+          <input className="no-spin" type="number" inputMode="numeric" min={0} aria-label="Home penalties" style={{ width: 52 }} value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />
           <span>-</span>
-          <input className="no-spin" type="number" min={0} style={{ width: 52 }} value={ap} disabled={busy} onChange={(e) => setAp(e.target.value)} />
+          <input className="no-spin" type="number" inputMode="numeric" min={0} aria-label="Away penalties" style={{ width: 52 }} value={ap} disabled={busy} onChange={(e) => setAp(e.target.value)} />
         </div>
       )}
       {error && <div className="error">{error}</div>}

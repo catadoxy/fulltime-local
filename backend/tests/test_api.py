@@ -305,6 +305,19 @@ def test_close_tournament():
     assert ren.json()["name"] == "Renamed"
 
 
+def test_tournament_note():
+    _reset()
+    ids = _make_players(2)
+    t = client.post(
+        "/api/tournaments",
+        json={"name": "N", "format": "league", "player_ids": ids, "note": "FIFA 24"},
+    ).json()
+    assert t["note"] == "FIFA 24"
+    r = client.patch(f"/api/tournaments/{t['id']}", json={"note": "Rocket League"})
+    assert r.status_code == 200
+    assert r.json()["note"] == "Rocket League"
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

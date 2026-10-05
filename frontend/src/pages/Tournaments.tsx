@@ -11,6 +11,7 @@ export default function Tournaments() {
   const [showCreate, setShowCreate] = useState(false)
 
   const [name, setName] = useState('')
+  const [note, setNote] = useState('')
   const [format, setFormat] = useState<TournamentFormat>('league')
   const [nbPitches, setNbPitches] = useState(1)
   const [selected, setSelected] = useState<number[]>([])
@@ -42,6 +43,7 @@ export default function Tournaments() {
     try {
       const t = await api.createTournament({
         name,
+        note: note.trim() || null,
         format,
         player_ids: selected,
         nb_pitches: nbPitches,
@@ -96,6 +98,17 @@ export default function Tournaments() {
             </div>
           </div>
 
+          <div className="field">
+            <label htmlFor="new-note">Game / note (optional)</label>
+            <input
+              id="new-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. FIFA 24, Rocket League"
+              style={{ width: '100%' }}
+            />
+          </div>
+
           <FormatSettings format={format} settings={settings} setSettings={setSettings} />
 
           <h3>Players ({selected.length})</h3>
@@ -145,6 +158,7 @@ export default function Tournaments() {
               <tr key={t.id}>
                 <td>
                   <Link to={`/t/${t.id}`}>{t.name}</Link>
+                  {t.note && <div className="muted small">{t.note}</div>}
                 </td>
                 <td className="muted">{FORMAT_LABELS[t.format] ?? t.format}</td>
                 <td>

@@ -33,6 +33,7 @@ export interface Participant {
 export interface Tournament {
   id: number
   name: string
+  note: string | null
   format: TournamentFormat
   status: 'active' | 'completed'
   nb_pitches: number

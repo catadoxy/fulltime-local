@@ -37,6 +37,7 @@ class Tournament(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
+    note: Mapped[str | None] = mapped_column(String(300), default=None)
     # league | knockout | groups_knockout | swiss | champions_league
     format: Mapped[str] = mapped_column(String(40))
     # active | completed

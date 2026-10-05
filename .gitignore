@@ -11,5 +11,8 @@ frontend/dist
 data/
 *.sqlite
 
+# local agent skills (keep out of the repo)
+.agents/
+
 # personal legacy data — never commit these
 legacy_database_*.db

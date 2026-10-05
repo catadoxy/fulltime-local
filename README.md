@@ -22,8 +22,11 @@ Built with **FastAPI + SQLite** (backend, `Room`-free clean schema) and a
 - **Result entry** with automatic standings, knockout advancement, bracket view
   and champion detection.
 - **Player management** and per-player ratings.
+- **Tournament notes** — record which game you played (FIFA, Rocket League…).
+- **Themes** — Floodlights, Midnight, Terrace, and a light Programme theme.
 - **Games tab** — record one-off / friendly matches outside any tournament; they
   count toward each player's stats and rating.
+- **Optional password** — set `FTL_PASSWORD` to require a shared login.
 - **Import your legacy database** — upload the original encrypted
   `legacy_database_*.db` export *or* a decrypted `.sqlite`. It decrypts
   automatically and preserves your historical tournaments, matches and champions.
@@ -150,6 +153,8 @@ All optional, via environment variables:
 | `FTL_DATA_DIR`       | `backend/data`             | Directory holding the SQLite file        |
 | `FTL_DATABASE_URL`   | `sqlite:///<DATA_DIR>/fulltime.db` | Override the DB URL entirely          |
 | `FTL_FRONTEND_DIR`   | `frontend/dist`            | Where the built SPA is served from       |
+| `FTL_PASSWORD`       | *(unset)*                  | If set, require this shared password to log in |
+| `FTL_SECRET`         | auto (file in data dir)    | Signing key for the session cookie       |
 
 ---
 

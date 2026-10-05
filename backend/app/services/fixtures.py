@@ -72,6 +72,7 @@ def create_tournament(db: Session, data) -> Tournament:
 
     tournament = Tournament(
         name=data.name,
+        note=data.note,
         format=fmt,
         nb_pitches=data.nb_pitches,
         settings=settings,

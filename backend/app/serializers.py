@@ -47,6 +47,7 @@ def tournament_out(t: Tournament, detail: bool = False) -> dict:
     data = {
         "id": t.id,
         "name": t.name,
+        "note": t.note,
         "format": t.format,
         "status": t.status,
         "nb_pitches": t.nb_pitches,

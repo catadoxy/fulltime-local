@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import auth
 from .config import APP_NAME, APP_VERSION, FRONTEND_DIR
 from .database import Base, engine
 from .routers import games, imports, players, tournaments
@@ -20,9 +21,20 @@ app.add_middleware(
 )
 
 
+def _migrate() -> None:
+    """Tiny forward-only migrations for existing SQLite databases."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(tournaments)")}
+        if cols and "note" not in cols:
+            conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN note VARCHAR(300)")
+
+
 @app.on_event("startup")
 def _startup() -> None:
     Base.metadata.create_all(bind=engine)
+    _migrate()
     from .database import SessionLocal
     from .services.results import complete_finished_tournaments
 
@@ -30,10 +42,25 @@ def _startup() -> None:
         complete_finished_tournaments(db)
 
 
+app.include_router(auth.router)
 app.include_router(players.router)
 app.include_router(tournaments.router)
 app.include_router(games.router)
 app.include_router(imports.router)
+
+
+@app.middleware("http")
+async def _auth_guard(request, call_next):
+    if auth.AUTH_ENABLED:
+        path = request.url.path
+        protected = (
+            path.startswith("/api")
+            and not path.startswith("/api/auth")
+            and path != "/api/health"
+        )
+        if protected and not auth.is_authenticated(request):
+            return JSONResponse({"detail": "Not authenticated"}, status_code=401)
+    return await call_next(request)
 
 
 @app.get("/api/health")

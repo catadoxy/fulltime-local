@@ -46,6 +46,12 @@ export const api = {
     http<Game>('/api/games', { method: 'POST', body: JSON.stringify(data) }),
   deleteGame: (id: number) => http<void>(`/api/games/${id}`, { method: 'DELETE' }),
 
+  authStatus: () =>
+    http<{ auth_required: boolean; authenticated: boolean }>('/api/auth/status'),
+  authLogin: (password: string) =>
+    http<{ ok: boolean }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
+  authLogout: () => http<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
+
   tournaments: () => http<Tournament[]>('/api/tournaments'),
   tournament: (id: number) => http<TournamentDetail>(`/api/tournaments/${id}`),
   createTournament: (data: Record<string, unknown>) =>

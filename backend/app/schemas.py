@@ -38,6 +38,7 @@ class PlayerOut(PlayerBase):
 # ---------- Tournaments ----------
 class TournamentCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+    note: str | None = None
     format: TournamentFormat = "league"
     player_ids: list[int] = Field(default_factory=list)
     nb_pitches: int = Field(default=1, ge=1, le=64)
@@ -47,6 +48,7 @@ class TournamentCreate(BaseModel):
 
 class TournamentUpdate(BaseModel):
     name: str | None = None
+    note: str | None = None
     nb_pitches: int | None = Field(default=None, ge=1, le=64)
     settings: dict[str, Any] | None = None
 
@@ -71,6 +73,7 @@ class TournamentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
+    note: str | None = None
     format: str
     status: str
     nb_pitches: int
