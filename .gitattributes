@@ -1,0 +1,4 @@
+# Normalize line endings; keep Linux-friendly files as LF (important for Docker).
+* text=auto eol=lf
+*.png binary
+*.jpg binary

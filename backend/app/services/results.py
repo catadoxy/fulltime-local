@@ -1,0 +1,212 @@
+"""Result entry, knockout progression, and stage-completion triggers."""
+from __future__ import annotations
+
+from datetime import date
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..models import Match, Tournament
+
+KNOCKOUT_STAGES = {"r64", "r32", "r16", "qf", "sf", "third", "final"}
+TABLE_STAGES = {"league", "league_phase", "group", "swiss"}
+
+
+def _knockout_matches(db: Session, t: Tournament) -> list[Match]:
+    return (
+        db.execute(
+            select(Match).where(
+                Match.tournament_id == t.id, Match.stage.in_(KNOCKOUT_STAGES)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
+def propagate(db: Session, t: Tournament, m: Match, winner_id: int) -> None:
+    if m.next_match_id and winner_id is not None:
+        nxt = db.get(Match, m.next_match_id)
+        if nxt is not None and not nxt.played:
+            if m.next_slot == "home":
+                nxt.home_id = winner_id
+            else:
+                nxt.away_id = winner_id
+    db.flush()
+
+
+def _complete_walkover(db: Session, t: Tournament, m: Match, winner_id: int) -> None:
+    m.played = True
+    m.winner_id = winner_id
+    m.note = (m.note or "") + " (bye)"
+    propagate(db, t, m, winner_id)
+
+
+def advance_byes(db: Session, t: Tournament) -> None:
+    """Auto-advance first-round byes repeatedly until stable."""
+    kos = _knockout_matches(db, t)
+    referenced = {m.next_match_id for m in kos if m.next_match_id}
+    changed = True
+    while changed:
+        changed = False
+        for m in _knockout_matches(db, t):
+            if m.id in referenced or m.played:
+                continue
+            if m.home_id is not None and m.away_id is None:
+                _complete_walkover(db, t, m, m.home_id)
+                changed = True
+            elif m.away_id is not None and m.home_id is None:
+                _complete_walkover(db, t, m, m.away_id)
+                changed = True
+    db.flush()
+
+
+def set_result(db: Session, m: Match, payload) -> Match:
+    t = m.tournament
+    m.home_score = payload.home_score
+    m.away_score = payload.away_score
+    m.home_pen = payload.home_pen
+    m.away_pen = payload.away_pen
+
+    if m.home_id is None or m.away_id is None:
+        raise ValueError("Cannot record a result for a match with unassigned players")
+
+    winner: int | None
+    if m.home_score > m.away_score:
+        winner = m.home_id
+    elif m.away_score > m.home_score:
+        winner = m.away_id
+    else:
+        winner = None
+        if m.stage in KNOCKOUT_STAGES:
+            if (
+                payload.home_pen is None
+                or payload.away_pen is None
+                or payload.home_pen == payload.away_pen
+            ):
+                raise ValueError("Knockout match is level: penalty scores are required")
+            winner = m.home_id if payload.home_pen > payload.away_pen else m.away_id
+
+    m.played = True
+    m.winner_id = winner
+    if winner is not None:
+        propagate(db, t, m, winner)
+
+    db.flush()
+    _post_process(db, t, m)
+    db.commit()
+    db.refresh(m)
+    return m
+
+
+def clear_result(db: Session, m: Match) -> Match:
+    t = m.tournament
+    if m.next_match_id:
+        nxt = db.get(Match, m.next_match_id)
+        if nxt is not None and not nxt.played:
+            if m.next_slot == "home":
+                nxt.home_id = None
+            else:
+                nxt.away_id = None
+    if m.stage == "final" and t.champion_id == m.winner_id:
+        t.champion_id = None
+        t.status = "active"
+        t.end_date = None
+    m.played = False
+    m.home_score = None
+    m.away_score = None
+    m.home_pen = None
+    m.away_pen = None
+    m.winner_id = None
+    db.flush()
+    db.commit()
+    db.refresh(m)
+    return m
+
+
+# --------------------------------------------------------------------------- #
+# Stage completion triggers
+# --------------------------------------------------------------------------- #
+def _post_process(db: Session, t: Tournament, m: Match) -> None:
+    _fill_third_place(db, t)
+    _maybe_generate_swiss(db, t)
+    _maybe_seed_knockout(db, t)
+
+    if m.stage == "final" and m.winner_id is not None:
+        t.champion_id = m.winner_id
+        t.status = "completed"
+        t.end_date = date.today()
+        db.flush()
+
+
+def _fill_third_place(db: Session, t: Tournament) -> None:
+    sfs = (
+        db.execute(
+            select(Match).where(Match.tournament_id == t.id, Match.stage == "sf")
+        )
+        .scalars()
+        .all()
+    )
+    third = (
+        db.execute(
+            select(Match).where(Match.tournament_id == t.id, Match.stage == "third")
+        )
+        .scalars()
+        .all()
+    )
+    if len(sfs) == 2 and all(s.played for s in sfs) and third:
+        match = third[0]
+        if not match.played and match.home_id is None and match.away_id is None:
+            losers = []
+            for s in sfs:
+                losers.append(s.home_id if s.winner_id == s.away_id else s.away_id)
+            match.home_id, match.away_id = losers[0], losers[1]
+            db.flush()
+
+
+def _maybe_generate_swiss(db: Session, t: Tournament) -> None:
+    if t.format != "swiss":
+        return
+    from .fixtures import generate_next_swiss_round
+
+    current = int(t.settings.get("current_round", 1))
+    total = int(t.settings.get("rounds", current))
+    if current >= total:
+        return
+    unplayed = (
+        db.execute(
+            select(Match).where(
+                Match.tournament_id == t.id,
+                Match.stage == "swiss",
+                Match.round_number == current,
+                Match.played.is_(False),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not unplayed:
+        generate_next_swiss_round(db, t)
+        db.flush()
+
+
+def _maybe_seed_knockout(db: Session, t: Tournament) -> None:
+    if t.format not in ("groups_knockout", "champions_league"):
+        return
+    if t.settings.get("knockout_seeded"):
+        return
+    stage = "group" if t.format == "groups_knockout" else "league_phase"
+    unplayed = (
+        db.execute(
+            select(Match).where(
+                Match.tournament_id == t.id, Match.stage == stage, Match.played.is_(False)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not unplayed:
+        from .fixtures import seed_knockout_from_tables
+
+        seed_knockout_from_tables(db, t)
+        db.flush()

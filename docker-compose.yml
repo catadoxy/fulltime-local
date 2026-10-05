@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    image: fulltime-local
+    container_name: fulltime-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=Europe/Bucharest
+    restart: unless-stopped

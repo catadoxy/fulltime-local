@@ -1,0 +1,15 @@
+# dependencies
+frontend/node_modules
+backend/.venv
+**/__pycache__/
+*.pyc
+
+# build output
+frontend/dist
+
+# runtime data
+data/
+*.sqlite
+
+# personal legacy data — never commit these
+legacy_database_*.db

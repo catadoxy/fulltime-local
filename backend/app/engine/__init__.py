@@ -1,0 +1,1 @@
+"""Fixture / bracket generation engine."""
