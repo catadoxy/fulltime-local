@@ -2,6 +2,7 @@ import type {
   Match,
   Meta,
   Player,
+  PlayerStats,
   Table,
   Tournament,
   TournamentDetail,
@@ -37,6 +38,7 @@ export const api = {
   updatePlayer: (id: number, data: Partial<Player>) =>
     http<Player>(`/api/players/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deletePlayer: (id: number) => http<void>(`/api/players/${id}`, { method: 'DELETE' }),
+  playerStats: (id: number) => http<PlayerStats>(`/api/players/${id}/stats`),
 
   tournaments: () => http<Tournament[]>('/api/tournaments'),
   tournament: (id: number) => http<TournamentDetail>(`/api/tournaments/${id}`),

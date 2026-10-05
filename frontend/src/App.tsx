@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import Tournaments from './pages/Tournaments'
 import TournamentDetail from './pages/TournamentDetail'
 import Players from './pages/Players'
+import PlayerDetail from './pages/PlayerDetail'
 import ImportPage from './pages/ImportPage'
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/t/:id" element={<TournamentDetail />} />
           <Route path="/players" element={<Players />} />
+          <Route path="/players/:id" element={<PlayerDetail />} />
           <Route path="/import" element={<ImportPage />} />
         </Routes>
       </main>

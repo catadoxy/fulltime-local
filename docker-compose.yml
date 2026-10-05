@@ -7,7 +7,7 @@ services:
     image: ghcr.io/catadoxy/fulltime-local:latest
     container_name: fulltime-local
     ports:
-      - "8000:8000"
+      - "8756:8756"
     volumes:
       - ./data:/data
     environment:

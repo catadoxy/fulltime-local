@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Participant, Player
+from ..models import Match, Participant, Player, Tournament
 from ..schemas import PlayerCreate, PlayerOut, PlayerUpdate
+from ..services.standings import standings
 
 router = APIRouter(prefix="/api/players", tags=["players"])
 
@@ -52,3 +53,116 @@ def delete_player(player_id: int, db: Session = Depends(get_db)):
         raise HTTPException(409, "Player is used in one or more tournaments")
     db.delete(player)
     db.commit()
+
+
+@router.get("/{player_id}/stats")
+def player_stats(player_id: int, db: Session = Depends(get_db)):
+    """Career statistics for a player, aggregated across every tournament."""
+    player = db.get(Player, player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    parts = (
+        db.execute(select(Participant).where(Participant.player_id == player_id))
+        .scalars()
+        .all()
+    )
+
+    totals = {
+        "tournaments": 0,
+        "played": 0,
+        "won": 0,
+        "drawn": 0,
+        "lost": 0,
+        "goals_for": 0,
+        "goals_against": 0,
+        "titles": 0,
+    }
+    history: list[dict] = []
+
+    for p in parts:
+        t = db.get(Tournament, p.tournament_id)
+        if not t:
+            continue
+        matches = (
+            db.execute(
+                select(Match).where(
+                    Match.tournament_id == t.id,
+                    Match.played.is_(True),
+                    or_(Match.home_id == player_id, Match.away_id == player_id),
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        played = won = drawn = lost = gf = ga = 0
+        for m in matches:
+            if m.home_id == player_id:
+                f, a = m.home_score or 0, m.away_score or 0
+            else:
+                f, a = m.away_score or 0, m.home_score or 0
+            played += 1
+            gf += f
+            ga += a
+            if f > a:
+                won += 1
+            elif f < a:
+                lost += 1
+            else:
+                drawn += 1
+
+        rank = _rank_in_tournament(db, t, player_id)
+        champion = t.champion_id == player_id
+
+        history.append(
+            {
+                "tournament_id": t.id,
+                "name": t.name,
+                "format": t.format,
+                "status": t.status,
+                "start_date": t.start_date,
+                "played": played,
+                "won": won,
+                "drawn": drawn,
+                "lost": lost,
+                "goals_for": gf,
+                "goals_against": ga,
+                "champion": champion,
+                "rank": rank,
+            }
+        )
+
+        totals["tournaments"] += 1
+        totals["played"] += played
+        totals["won"] += won
+        totals["drawn"] += drawn
+        totals["lost"] += lost
+        totals["goals_for"] += gf
+        totals["goals_against"] += ga
+        totals["titles"] += 1 if champion else 0
+
+    history.sort(key=lambda h: (h["start_date"] or "", h["tournament_id"]), reverse=True)
+    totals["win_rate"] = round(100 * totals["won"] / totals["played"]) if totals["played"] else 0
+
+    return {
+        "player": PlayerOut.model_validate(player).model_dump(),
+        "totals": totals,
+        "history": history,
+    }
+
+
+def _rank_in_tournament(db: Session, t: Tournament, player_id: int) -> int | None:
+    """League-table rank, when the tournament has a single table."""
+    stage = None
+    if t.format == "league":
+        stage = "league"
+    elif t.format == "champions_league":
+        stage = "league_phase"
+    if stage is None:
+        return None
+    table = standings(db, t, stage=stage)
+    for i, row in enumerate(table):
+        if row["player_id"] == player_id:
+            return i + 1
+    return None

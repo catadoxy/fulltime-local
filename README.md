@@ -40,7 +40,7 @@ cloning the repo** — just grab `docker-compose.yml` and:
 docker compose up -d
 ```
 
-Then open <http://localhost:8000>.
+Then open <http://localhost:8756>.
 
 If the package is **private** (the default), log in to the registry first using a
 GitHub Personal Access Token with the `read:packages` scope:
@@ -58,7 +58,7 @@ docker compose -f docker-compose.build.yml up --build
 ```
 
 - The SQLite database lives in `./data/fulltime.db` on the host (mounted volume).
-- Interactive API docs: <http://localhost:8000/docs>
+- Interactive API docs: <http://localhost:8756/docs>
 
 To stop: `docker compose down` (the DB is a bind mount and is not removed).
 
@@ -75,7 +75,7 @@ cd backend
 python -m venv .venv
 # Windows: .venv\Scripts\activate | Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8756
 ```
 
 **Frontend**
@@ -86,7 +86,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-The dev server proxies `/api` to `http://localhost:8000` (see `vite.config.ts`).
+The dev server proxies `/api` to `http://localhost:8756` (see `vite.config.ts`).
 
 **Production-style (single port)** — build the SPA and let FastAPI serve it:
 
@@ -94,7 +94,7 @@ The dev server proxies `/api` to `http://localhost:8000` (see `vite.config.ts`).
 cd frontend && npm run build
 cd ../backend
 # Windows (PowerShell)
-$env:FTL_FRONTEND_DIR="../frontend/dist"; uvicorn app.main:app --port 8000
+$env:FTL_FRONTEND_DIR="../frontend/dist"; uvicorn app.main:app --port 8756
 ```
 
 ---

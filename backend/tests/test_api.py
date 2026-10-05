@@ -146,6 +146,24 @@ def test_knockout_draw_requires_penalties():
     assert good.status_code == 200
 
 
+def test_player_stats():
+    _reset()
+    ids = _make_players(4)
+    tid = client.post(
+        "/api/tournaments",
+        json={"name": "Stats", "format": "league", "player_ids": ids},
+    ).json()["id"]
+    _play_all(tid)
+    r = client.get(f"/api/players/{ids[0]}/stats")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["totals"]["tournaments"] == 1
+    assert data["totals"]["played"] == 3  # 4-player round robin
+    assert data["totals"]["won"] + data["totals"]["drawn"] + data["totals"]["lost"] == 3
+    assert data["history"][0]["rank"] is not None
+    assert data["history"][0]["tournament_id"] == tid
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

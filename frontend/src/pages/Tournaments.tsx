@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { FORMAT_LABELS } from '../labels'
 import type { Player, Tournament, TournamentFormat } from '../types'
-
-const FORMAT_LABELS: Record<TournamentFormat, string> = {
-  league: 'Championship / round-robin',
-  knockout: 'Knockout',
-  groups_knockout: 'Group stage + finals',
-  swiss: 'Swiss system',
-  champions_league: 'Champions League',
-}
 
 export default function Tournaments() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
@@ -55,6 +48,17 @@ export default function Tournaments() {
         settings,
       })
       navigate(`/t/${t.id}`)
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
+
+  async function remove(t: Tournament) {
+    if (!confirm(`Delete tournament "${t.name}" and all its matches? This cannot be undone.`)) return
+    setError('')
+    try {
+      await api.deleteTournament(t.id)
+      load()
     } catch (err: any) {
       setError(err.message)
     }
@@ -132,6 +136,7 @@ export default function Tournaments() {
               <th>Format</th>
               <th>Status</th>
               <th>Champion</th>
+              <th>Created</th>
               <th></th>
             </tr>
           </thead>
@@ -146,16 +151,22 @@ export default function Tournaments() {
                   <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
                 </td>
                 <td>{t.champion_id ? championNames.get(t.champion_id) ?? `#${t.champion_id}` : '—'}</td>
+                <td className="muted small">{formatDate(t.created_at)}</td>
                 <td>
-                  <Link className="btn" to={`/t/${t.id}`}>
-                    Open
-                  </Link>
+                  <div className="row" style={{ justifyContent: 'flex-end' }}>
+                    <Link className="btn" to={`/t/${t.id}`}>
+                      Open
+                    </Link>
+                    <button className="danger" onClick={() => remove(t)}>
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {tournaments.length === 0 && (
               <tr>
-                <td colSpan={5} className="muted">
+                <td colSpan={6} className="muted">
                   No tournaments yet.
                 </td>
               </tr>
@@ -165,6 +176,13 @@ export default function Tournaments() {
       </div>
     </div>
   )
+}
+
+function formatDate(iso: string): string {
+  if (!iso) return '—'
+  const hasTz = /[zZ]|[+-]\d\d:\d\d$/.test(iso)
+  const d = new Date(hasTz ? iso : `${iso}Z`) // timestamps are stored in UTC
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function FormatSettings({

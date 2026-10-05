@@ -90,3 +90,37 @@ export interface Meta {
   formats: { id: TournamentFormat; label: string }[]
   default_settings: Record<string, Record<string, any>>
 }
+
+export interface PlayerTotals {
+  tournaments: number
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  titles: number
+  win_rate: number
+}
+
+export interface PlayerHistoryRow {
+  tournament_id: number
+  name: string
+  format: TournamentFormat
+  status: 'active' | 'completed'
+  start_date: string | null
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  champion: boolean
+  rank: number | null
+}
+
+export interface PlayerStats {
+  player: Player
+  totals: PlayerTotals
+  history: PlayerHistoryRow[]
+}

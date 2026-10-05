@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
@@ -22,6 +22,7 @@ const isKnockout = (stage: string) => KNOCKOUT_ORDER.includes(stage)
 export default function TournamentDetail() {
   const { id } = useParams()
   const tid = Number(id)
+  const navigate = useNavigate()
   const [t, setT] = useState<TDetail | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [tables, setTables] = useState<Table[]>([])
@@ -62,6 +63,17 @@ export default function TournamentDetail() {
   const hasBracket = matches.some((m) => isKnockout(m.stage))
   const champion = t?.champion_id ? playerNames.get(t.champion_id) : null
 
+  async function removeTournament() {
+    if (!t) return
+    if (!confirm(`Delete tournament "${t.name}" and all its matches? This cannot be undone.`)) return
+    try {
+      await api.deleteTournament(t.id)
+      navigate('/tournaments')
+    } catch (e: any) {
+      setError(e.message)
+    }
+  }
+
   if (!t) return <div className="panel">{error || 'Loading…'}</div>
 
   return (
@@ -76,9 +88,14 @@ export default function TournamentDetail() {
             {champion && <span className="badge done">🏆 {champion}</span>}
           </div>
         </div>
-        <Link className="btn" to="/tournaments">
-          ← All tournaments
-        </Link>
+        <div className="row">
+          <button className="danger" onClick={removeTournament}>
+            Delete
+          </button>
+          <Link className="btn" to="/tournaments">
+            ← All tournaments
+          </Link>
+        </div>
       </div>
       {error && <div className="error">{error}</div>}
 
@@ -100,6 +117,7 @@ export default function TournamentDetail() {
         <Fixtures
           matches={matches}
           groupNames={groupNames}
+          nbPitches={t.nb_pitches}
           onChange={load}
           tid={tid}
         />
@@ -168,11 +186,13 @@ function StandingsTable({ table }: { table: Table }) {
 function Fixtures({
   matches,
   groupNames,
+  nbPitches,
   tid,
   onChange,
 }: {
   matches: Match[]
   groupNames: Map<number, string>
+  nbPitches: number
   tid: number
   onChange: () => void
 }) {
@@ -213,7 +233,7 @@ function Fixtures({
                 {section.matches
                   .filter((m) => m.round_number === round)
                   .map((m) => (
-                    <MatchRow key={m.id} match={m} tid={tid} onChange={onChange} />
+                    <MatchRow key={m.id} match={m} tid={tid} nbPitches={nbPitches} onChange={onChange} />
                   ))}
               </div>
             ))}
@@ -225,7 +245,17 @@ function Fixtures({
   )
 }
 
-function MatchRow({ match, tid, onChange }: { match: Match; tid: number; onChange: () => void }) {
+function MatchRow({
+  match,
+  tid,
+  nbPitches,
+  onChange,
+}: {
+  match: Match
+  tid: number
+  nbPitches: number
+  onChange: () => void
+}) {
   const [home, setHome] = useState(match.home_score ?? '')
   const [away, setAway] = useState(match.away_score ?? '')
   const [hp, setHp] = useState(match.home_pen ?? '')
@@ -280,12 +310,14 @@ function MatchRow({ match, tid, onChange }: { match: Match; tid: number; onChang
   return (
     <div>
       <div className="match">
-        <div className={`team ${homeWin ? 'won' : ''}`}>
-          {match.home_name ?? <span className="muted">TBD</span>}
+        <div className={`team home ${homeWin ? 'won' : ''}`}>
+          {nbPitches > 1 && match.pitch != null && <span className="badge small">P{match.pitch}</span>}
+          <span className="team-name">{match.home_name ?? <span className="muted">TBD</span>}</span>
           {homeWin && ' ✓'}
         </div>
-        <div className="row" style={{ justifyContent: 'center' }}>
+        <div className="score-box">
           <input
+            className="score-input"
             type="number"
             min={0}
             value={home}
@@ -294,6 +326,7 @@ function MatchRow({ match, tid, onChange }: { match: Match; tid: number; onChang
           />
           <span className="muted">-</span>
           <input
+            className="score-input"
             type="number"
             min={0}
             value={away}
@@ -303,7 +336,7 @@ function MatchRow({ match, tid, onChange }: { match: Match; tid: number; onChang
         </div>
         <div className={`team away ${awayWin ? 'won' : ''}`}>
           {awayWin && '✓ '}
-          {match.away_name ?? <span className="muted">TBD</span>}
+          <span className="team-name">{match.away_name ?? <span className="muted">TBD</span>}</span>
         </div>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           {ready && (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { Player } from '../types'
 
@@ -78,7 +79,9 @@ export default function Players() {
           <tbody>
             {players.map((p) => (
               <tr key={p.id}>
-                <td>{p.name}</td>
+                <td>
+                  <Link to={`/players/${p.id}`}>{p.name}</Link>
+                </td>
                 <td className="muted">{p.email || '—'}</td>
                 <td>
                   <input
