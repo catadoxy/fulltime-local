@@ -11,6 +11,8 @@ export interface Player {
   email?: string | null
   picture?: string | null
   rating: number
+  tournaments?: number
+  titles?: number
 }
 
 export interface Group {

@@ -20,7 +20,10 @@ export default function PlayerDetail() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.playerStats(pid).then(setStats).catch((e) => setError(e.message))
+    api
+      .playerStats(pid)
+      .then(setStats)
+      .catch((e) => setError(e.message))
   }, [pid])
 
   if (!stats) return <div className="panel">{error || 'Loading…'}</div>
@@ -32,9 +35,18 @@ export default function PlayerDetail() {
       <div className="row between">
         <div>
           <h1 style={{ marginBottom: 4 }}>{player.name}</h1>
-          <div className="row small muted">
-            {player.email && <span>{player.email}</span>}
-            <span>Rating {player.rating}</span>
+          <div className="small muted">
+            {player.email && <span>{player.email} · </span>}
+            Participated in <strong>{totals.tournaments}</strong>{' '}
+            {totals.tournaments === 1 ? 'tournament' : 'tournaments'}
+            {totals.titles > 0 && (
+              <>
+                {' · '}
+                <span className="won">
+                  🏆 {totals.titles} {totals.titles === 1 ? 'title' : 'titles'}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <Link className="btn" to="/players">

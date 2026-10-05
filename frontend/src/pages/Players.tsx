@@ -28,15 +28,6 @@ export default function Players() {
     }
   }
 
-  async function update(p: Player, patch: Partial<Player>) {
-    try {
-      await api.updatePlayer(p.id, patch)
-      load()
-    } catch (err: any) {
-      setError(err.message)
-    }
-  }
-
   async function remove(p: Player) {
     if (!confirm(`Delete player "${p.name}"?`)) return
     try {
@@ -72,7 +63,7 @@ export default function Players() {
             <tr>
               <th>Name</th>
               <th>Email</th>
-              <th style={{ width: 120 }}>Rating</th>
+              <th style={{ width: 130 }}>Tournaments</th>
               <th style={{ width: 90 }}></th>
             </tr>
           </thead>
@@ -84,13 +75,12 @@ export default function Players() {
                 </td>
                 <td className="muted">{p.email || '—'}</td>
                 <td>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={p.rating}
-                    onChange={(e) => update(p, { rating: Number(e.target.value) })}
-                  />
+                  <span className="badge">{p.tournaments ?? 0}</span>
+                  {!!p.titles && (
+                    <span className="badge done" style={{ marginLeft: 6 }}>
+                      🏆 {p.titles}
+                    </span>
+                  )}
                 </td>
                 <td>
                   <button className="danger" onClick={() => remove(p)}>

@@ -30,6 +30,8 @@ class PlayerUpdate(BaseModel):
 class PlayerOut(PlayerBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    tournaments: int = 0
+    titles: int = 0
 
 
 # ---------- Tournaments ----------

@@ -143,6 +143,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .stat .label { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
 .badge.small { padding: 0.05rem 0.35rem; font-size: 0.7rem; }
 .round-header { display: flex; align-items: center; gap: 0.5rem; }
+.rating-editor { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
+input[type='range'] { accent-color: var(--accent-2); width: 160px; }
 
 .bracket-col { min-width: 190px; }
 .bracket-round { display: flex; flex-direction: column; gap: 1rem; justify-content: space-around; height: 100%; }

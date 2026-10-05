@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -14,7 +14,33 @@ router = APIRouter(prefix="/api/players", tags=["players"])
 
 @router.get("", response_model=list[PlayerOut])
 def list_players(db: Session = Depends(get_db)):
-    return db.execute(select(Player).order_by(Player.name)).scalars().all()
+    players = db.execute(select(Player).order_by(Player.name)).scalars().all()
+
+    counts = dict(
+        db.execute(
+            select(Participant.player_id, func.count()).group_by(Participant.player_id)
+        ).all()
+    )
+    titles = dict(
+        db.execute(
+            select(Tournament.champion_id, func.count())
+            .where(Tournament.champion_id.is_not(None))
+            .group_by(Tournament.champion_id)
+        ).all()
+    )
+
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+            "email": p.email,
+            "picture": p.picture,
+            "rating": p.rating,
+            "tournaments": counts.get(p.id, 0),
+            "titles": titles.get(p.id, 0),
+        }
+        for p in players
+    ]
 
 
 @router.post("", response_model=PlayerOut, status_code=201)

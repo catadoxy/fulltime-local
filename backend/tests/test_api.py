@@ -163,6 +163,10 @@ def test_player_stats():
     assert data["history"][0]["rank"] is not None
     assert data["history"][0]["tournament_id"] == tid
 
+    listing = client.get("/api/players").json()
+    row = next(x for x in listing if x["id"] == ids[0])
+    assert row["tournaments"] == 1
+
 
 def test_backup_export():
     _reset()
