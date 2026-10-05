@@ -86,7 +86,7 @@ def delete_player(player_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{player_id}/stats")
 def player_stats(player_id: int, db: Session = Depends(get_db)):
-    """Career statistics for a player, aggregated across every tournament."""
+    """Career statistics for a player, split into tournaments and friendlies."""
     player = db.get(Player, player_id)
     if not player:
         raise HTTPException(404, "Player not found")
@@ -99,7 +99,7 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    totals = {
+    t_totals = {
         "tournaments": 0,
         "played": 0,
         "won": 0,
@@ -143,9 +143,7 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
             else:
                 drawn += 1
 
-        rank = _rank_in_tournament(db, t, player_id)
         champion = t.champion_id == player_id
-
         history.append(
             {
                 "tournament_id": t.id,
@@ -160,71 +158,59 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
                 "goals_for": gf,
                 "goals_against": ga,
                 "champion": champion,
-                "rank": rank,
+                "rank": _rank_in_tournament(db, t, player_id),
             }
         )
 
-        totals["tournaments"] += 1
-        totals["played"] += played
-        totals["won"] += won
-        totals["drawn"] += drawn
-        totals["lost"] += lost
-        totals["goals_for"] += gf
-        totals["goals_against"] += ga
-        totals["titles"] += 1 if champion else 0
+        t_totals["tournaments"] += 1
+        t_totals["played"] += played
+        t_totals["won"] += won
+        t_totals["drawn"] += drawn
+        t_totals["lost"] += lost
+        t_totals["goals_for"] += gf
+        t_totals["goals_against"] += ga
+        t_totals["titles"] += 1 if champion else 0
 
-    # Standalone friendly games also count toward a player's career stats.
+    history.sort(key=lambda h: (str(h["start_date"] or ""), h["tournament_id"]), reverse=True)
+    t_totals["win_rate"] = (
+        round(100 * t_totals["won"] / t_totals["played"]) if t_totals["played"] else 0
+    )
+
+    # Standalone friendlies.
     games = (
-        db.execute(
-            select(Game).where(or_(Game.home_id == player_id, Game.away_id == player_id))
-        )
+        db.execute(select(Game).where(or_(Game.home_id == player_id, Game.away_id == player_id)))
         .scalars()
         .all()
     )
-    if games:
-        gplayed = gwon = gdrawn = glost = ggf = gga = 0
-        for g in games:
-            if g.home_id == player_id:
-                f, a = g.home_score, g.away_score
-            else:
-                f, a = g.away_score, g.home_score
-            gplayed += 1
-            ggf += f
-            gga += a
-            if f > a:
-                gwon += 1
-            elif f < a:
-                glost += 1
-            else:
-                gdrawn += 1
-        history.append(
+    f_totals = {"played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0, "goals_against": 0}
+    f_matches: list[dict] = []
+    for g in games:
+        home = g.home_id == player_id
+        opponent = g.away if home else g.home
+        f, a = (g.home_score, g.away_score) if home else (g.away_score, g.home_score)
+        result = "W" if f > a else "L" if f < a else "D"
+        f_totals["played"] += 1
+        f_totals["goals_for"] += f
+        f_totals["goals_against"] += a
+        f_totals["won" if result == "W" else "lost" if result == "L" else "drawn"] += 1
+        f_matches.append(
             {
-                "tournament_id": 0,
-                "name": "Friendly games",
-                "format": "friendly",
-                "status": "active",
-                "start_date": None,
-                "played": gplayed,
-                "won": gwon,
-                "drawn": gdrawn,
-                "lost": glost,
-                "goals_for": ggf,
-                "goals_against": gga,
-                "champion": False,
-                "rank": None,
+                "id": g.id,
+                "played_at": g.played_at,
+                "opponent_id": opponent.id if opponent else None,
+                "opponent_name": opponent.name if opponent else "—",
+                "home": home,
+                "goals_for": f,
+                "goals_against": a,
+                "result": result,
+                "note": g.note,
             }
         )
-        totals["played"] += gplayed
-        totals["won"] += gwon
-        totals["drawn"] += gdrawn
-        totals["lost"] += glost
-        totals["goals_for"] += ggf
-        totals["goals_against"] += gga
 
-    history.sort(key=lambda h: (str(h["start_date"] or ""), h["tournament_id"]), reverse=True)
-    totals["win_rate"] = round(100 * totals["won"] / totals["played"]) if totals["played"] else 0
-    totals["elo"] = rating["elo"]
-    totals["rating"] = rating["rating"]
+    f_matches.sort(key=lambda m: (str(m["played_at"] or ""), m["id"]), reverse=True)
+    f_totals["win_rate"] = (
+        round(100 * f_totals["won"] / f_totals["played"]) if f_totals["played"] else 0
+    )
 
     player_data = PlayerOut.model_validate(player).model_dump()
     player_data["rating"] = rating["rating"]
@@ -232,8 +218,9 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
 
     return {
         "player": player_data,
-        "totals": totals,
-        "history": history,
+        "rating": {"elo": rating["elo"], "rating": rating["rating"]},
+        "tournaments": {"totals": t_totals, "history": history},
+        "friendlies": {"totals": f_totals, "matches": f_matches},
     }
 
 

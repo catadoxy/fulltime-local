@@ -5,7 +5,8 @@ import Tournaments from './pages/Tournaments'
 import TournamentDetail from './pages/TournamentDetail'
 import Players from './pages/Players'
 import PlayerDetail from './pages/PlayerDetail'
-import Games from './pages/Games'
+import Friendlies from './pages/Friendlies'
+import Compare from './pages/Compare'
 import ImportPage from './pages/ImportPage'
 
 const THEMES = [
@@ -77,7 +78,8 @@ export default function App() {
         <nav>
           <NavLink to="/tournaments">Tournaments</NavLink>
           <NavLink to="/players">Players</NavLink>
-          <NavLink to="/games">Games</NavLink>
+          <NavLink to="/friendlies">Friendlies</NavLink>
+          <NavLink to="/compare">Compare</NavLink>
           <NavLink to="/import">Data</NavLink>
         </nav>
         {auth.required && (
@@ -98,7 +100,8 @@ export default function App() {
           <Route path="/t/:id" element={<TournamentDetail />} />
           <Route path="/players" element={<Players />} />
           <Route path="/players/:id" element={<PlayerDetail />} />
-          <Route path="/games" element={<Games />} />
+          <Route path="/friendlies" element={<Friendlies />} />
+          <Route path="/compare" element={<Compare />} />
           <Route path="/import" element={<ImportPage />} />
         </Routes>
       </main>

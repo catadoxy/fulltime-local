@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from . import auth
 from .config import APP_NAME, APP_VERSION, FRONTEND_DIR
 from .database import Base, engine
-from .routers import games, imports, players, tournaments
+from .routers import compare, games, imports, players, tournaments
 
 app = FastAPI(title=APP_NAME, version=APP_VERSION)
 
@@ -46,6 +46,7 @@ app.include_router(auth.router)
 app.include_router(players.router)
 app.include_router(tournaments.router)
 app.include_router(games.router)
+app.include_router(compare.router)
 app.include_router(imports.router)
 
 

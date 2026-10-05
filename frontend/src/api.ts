@@ -1,4 +1,5 @@
 import type {
+  CompareResult,
   Game,
   Match,
   Meta,
@@ -40,6 +41,7 @@ export const api = {
     http<Player>(`/api/players/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deletePlayer: (id: number) => http<void>(`/api/players/${id}`, { method: 'DELETE' }),
   playerStats: (id: number) => http<PlayerStats>(`/api/players/${id}/stats`),
+  compare: (a: number, b: number) => http<CompareResult>(`/api/compare?a=${a}&b=${b}`),
 
   games: () => http<Game[]>('/api/games'),
   createGame: (data: Record<string, unknown>) =>

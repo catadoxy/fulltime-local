@@ -5,7 +5,7 @@ import type { Game, Player } from '../types'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-export default function Games() {
+export default function Friendlies() {
   const [games, setGames] = useState<Game[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [homeId, setHomeId] = useState('')
@@ -62,9 +62,9 @@ export default function Games() {
   return (
     <div>
       <div className="page-head">
-        <h1 style={{ marginBottom: 4 }}>Games</h1>
+        <h1 style={{ marginBottom: 4 }}>Friendlies</h1>
         <div className="small muted">
-          Record one-off matches outside a tournament. They count toward each player's stats and
+          Record friendly matches outside a tournament. They count toward each player's stats and
           rating.
         </div>
       </div>
@@ -72,8 +72,7 @@ export default function Games() {
       <form className="panel" onSubmit={add}>
         <div className="row" style={{ alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div>
-            <label>Home</label>
-            <select value={homeId} onChange={(e) => setHomeId(e.target.value)}>
+            <label>Home</label>            <select value={homeId} onChange={(e) => setHomeId(e.target.value)}>
               <option value="">—</option>
               {players.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -134,7 +133,7 @@ export default function Games() {
             />
           </div>
           <button className="primary" type="submit" disabled={busy}>
-            Add game
+            Add friendly
           </button>
         </div>
         {players.length < 2 && <div className="muted small">Add at least two players first.</div>}
@@ -186,7 +185,8 @@ export default function Games() {
       </div>
 
       <div className="muted small">
-        Tip: a player's full record (tournaments + games) is on their <Link to="/players">profile</Link>.
+        Tip: a player's full record (tournaments + friendlies) is on their{' '}
+        <Link to="/players">profile</Link>.
       </div>
     </div>
   )

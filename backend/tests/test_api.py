@@ -157,11 +157,16 @@ def test_player_stats():
     r = client.get(f"/api/players/{ids[0]}/stats")
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data["totals"]["tournaments"] == 1
-    assert data["totals"]["played"] == 3  # 4-player round robin
-    assert data["totals"]["won"] + data["totals"]["drawn"] + data["totals"]["lost"] == 3
-    assert data["history"][0]["rank"] is not None
-    assert data["history"][0]["tournament_id"] == tid
+    assert data["tournaments"]["totals"]["tournaments"] == 1
+    assert data["tournaments"]["totals"]["played"] == 3  # 4-player round robin
+    assert (
+        data["tournaments"]["totals"]["won"]
+        + data["tournaments"]["totals"]["drawn"]
+        + data["tournaments"]["totals"]["lost"]
+        == 3
+    )
+    assert data["tournaments"]["history"][0]["rank"] is not None
+    assert data["tournaments"]["history"][0]["tournament_id"] == tid
 
     listing = client.get("/api/players").json()
     row = next(x for x in listing if x["id"] == ids[0])
@@ -186,8 +191,8 @@ def test_auto_rating():
     assert winner["rating"] > 50 > loser["rating"]
 
     stats = client.get(f"/api/players/{winner['id']}/stats").json()
-    assert stats["totals"]["rating"] == winner["rating"]
-    assert stats["totals"]["elo"] == winner["elo"]
+    assert stats["rating"]["rating"] == winner["rating"]
+    assert stats["rating"]["elo"] == winner["elo"]
 
 
 def test_double_round_league():
@@ -226,8 +231,8 @@ def test_games():
 
     # Games count toward career stats and ratings.
     stats = client.get(f"/api/players/{ids[0]}/stats").json()
-    assert stats["totals"]["played"] == 1
-    assert any(h["format"] == "friendly" for h in stats["history"])
+    assert stats["friendlies"]["totals"]["played"] == 1
+    assert stats["friendlies"]["matches"][0]["result"] in ("W", "D", "L")
 
     listing = client.get("/api/players").json()
     winner = next(x for x in listing if x["id"] == ids[0])
@@ -285,7 +290,7 @@ def test_stats_with_dates_and_games():
     )
     r = client.get(f"/api/players/{ids[0]}/stats")
     assert r.status_code == 200, r.text
-    assert any(h["format"] == "friendly" for h in r.json()["history"])
+    assert r.json()["friendlies"]["matches"]
 
 
 def test_close_tournament():
@@ -316,6 +321,34 @@ def test_tournament_note():
     r = client.patch(f"/api/tournaments/{t['id']}", json={"note": "Rocket League"})
     assert r.status_code == 200
     assert r.json()["note"] == "Rocket League"
+
+
+def test_compare():
+    _reset()
+    ids = _make_players(2)
+    tid = client.post(
+        "/api/tournaments", json={"name": "C", "format": "league", "player_ids": ids}
+    ).json()["id"]
+    m = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+    client.post(
+        f"/api/tournaments/{tid}/matches/{m['id']}/result",
+        json={"home_score": 2, "away_score": 1},
+    )
+    client.post(
+        "/api/games",
+        json={"home_id": ids[0], "away_id": ids[1], "home_score": 0, "away_score": 3},
+    )
+
+    r = client.get(f"/api/compare?a={ids[0]}&b={ids[1]}")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["a"]["player"]["id"] == ids[0]
+    assert d["b"]["player"]["id"] == ids[1]
+    h = d["head_to_head"]
+    assert h["played"] == 2  # one tournament match + one friendly
+    assert h["a_wins"] + h["b_wins"] + h["draws"] == h["played"]
+
+    assert client.get(f"/api/compare?a={ids[0]}&b={ids[0]}").status_code == 400
 
 
 def test_backup_export():

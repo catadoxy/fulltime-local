@@ -96,17 +96,15 @@ export interface Meta {
 }
 
 export interface PlayerTotals {
-  tournaments: number
+  tournaments?: number
+  titles?: number
   played: number
   won: number
   drawn: number
   lost: number
   goals_for: number
   goals_against: number
-  titles: number
   win_rate: number
-  elo: number
-  rating: number
 }
 
 export interface PlayerHistoryRow {
@@ -137,8 +135,53 @@ export interface Game {
   note: string | null
 }
 
+export interface FriendlyMatch {
+  id: number
+  played_at: string
+  opponent_id: number | null
+  opponent_name: string
+  home: boolean
+  goals_for: number
+  goals_against: number
+  result: 'W' | 'D' | 'L'
+  note: string | null
+}
+
 export interface PlayerStats {
   player: Player
-  totals: PlayerTotals
-  history: PlayerHistoryRow[]
+  rating: { elo: number; rating: number }
+  tournaments: { totals: PlayerTotals; history: PlayerHistoryRow[] }
+  friendlies: { totals: PlayerTotals; matches: FriendlyMatch[] }
+}
+
+export interface CompareSummary {
+  player: { id: number; name: string }
+  elo: number
+  rating: number
+  tournaments: PlayerTotals
+  friendlies: PlayerTotals
+}
+
+export interface HeadToHeadMatch {
+  date: string | null
+  competition: string
+  kind: string
+  a_score: number
+  b_score: number
+  result: 'A' | 'B' | 'D'
+  note?: string | null
+}
+
+export interface CompareResult {
+  a: CompareSummary
+  b: CompareSummary
+  head_to_head: {
+    a_wins: number
+    b_wins: number
+    draws: number
+    a_goals: number
+    b_goals: number
+    played: number
+    matches: HeadToHeadMatch[]
+  }
 }
