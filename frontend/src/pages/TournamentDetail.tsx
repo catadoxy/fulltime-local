@@ -4,6 +4,7 @@ import { api } from '../api'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
 const KNOCKOUT_ORDER = ['r64', 'r32', 'r16', 'qf', 'sf', 'third', 'final']
+const TABLE_STAGES = ['league', 'league_phase', 'group', 'swiss']
 const STAGE_LABELS: Record<string, string> = {
   r64: 'Round of 64',
   r32: 'Round of 32',
@@ -26,7 +27,6 @@ export default function TournamentDetail() {
   const [t, setT] = useState<TDetail | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [tables, setTables] = useState<Table[]>([])
-  const [tab, setTab] = useState<'fixtures' | 'standings' | 'bracket'>('fixtures')
   const [error, setError] = useState('')
 
   const load = async () => {
@@ -61,6 +61,7 @@ export default function TournamentDetail() {
   }, [t])
 
   const hasBracket = matches.some((m) => isKnockout(m.stage))
+  const hasTables = matches.some((m) => TABLE_STAGES.includes(m.stage))
   const champion = t?.champion_id ? playerNames.get(t.champion_id) : null
 
   async function removeTournament() {
@@ -78,9 +79,9 @@ export default function TournamentDetail() {
 
   return (
     <div>
-      <div className="row between">
+      <div className="row between page-head">
         <div>
-          <h1 style={{ marginBottom: 4 }}>{t.name}</h1>
+          <h1 style={{ marginBottom: 6 }}>{t.name}</h1>
           <div className="row small">
             <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
             <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
@@ -99,42 +100,26 @@ export default function TournamentDetail() {
       </div>
       {error && <div className="error">{error}</div>}
 
-      <div className="tabs">
-        <button className={tab === 'fixtures' ? 'active' : ''} onClick={() => setTab('fixtures')}>
-          Fixtures & results
-        </button>
-        <button className={tab === 'standings' ? 'active' : ''} onClick={() => setTab('standings')}>
-          Standings
-        </button>
-        {hasBracket && (
-          <button className={tab === 'bracket' ? 'active' : ''} onClick={() => setTab('bracket')}>
-            Bracket
-          </button>
-        )}
-      </div>
-
-      {tab === 'fixtures' && (
-        <Fixtures
-          matches={matches}
-          groupNames={groupNames}
-          nbPitches={t.nb_pitches}
-          onChange={load}
-          tid={tid}
-        />
-      )}
-
-      {tab === 'standings' && (
-        <div>
+      {hasTables && (
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>Standings</h3>
           {tables.map((table, i) => (
-            <div className="panel" key={i}>
-              {table.group_name && <h3>{table.group_name}</h3>}
+            <div key={i} style={{ marginBottom: i < tables.length - 1 ? '1rem' : 0 }}>
+              {table.group_name && <div className="row-header">{table.group_name}</div>}
               <StandingsTable table={table} />
             </div>
           ))}
         </div>
       )}
 
-      {tab === 'bracket' && <Bracket matches={matches} />}
+      <Fixtures matches={matches} groupNames={groupNames} nbPitches={t.nb_pitches} tid={tid} onChange={load} />
+
+      {hasBracket && (
+        <div className="panel">
+          <h3 style={{ marginTop: 0 }}>Bracket</h3>
+          <Bracket matches={matches} />
+        </div>
+      )}
     </div>
   )
 }
@@ -160,7 +145,9 @@ function StandingsTable({ table }: { table: Table }) {
         {table.rows.map((r, i) => (
           <tr key={r.player_id}>
             <td>{i + 1}</td>
-            <td>{r.player_name}</td>
+            <td>
+              <Link to={`/players/${r.player_id}`}>{r.player_name}</Link>
+            </td>
             <td>{r.played}</td>
             <td>{r.won}</td>
             <td>{r.drawn}</td>
@@ -219,17 +206,25 @@ function Fixtures({
     return arr
   }, [matches, groupNames])
 
+  if (matches.length === 0) return <div className="panel muted">No fixtures.</div>
+
   return (
-    <div>
+    <div className="panel">
+      <h3 style={{ marginTop: 0 }}>Fixtures &amp; results</h3>
       {sections.map((section) => {
         const knockoutSection = isKnockout(section.matches[0]?.stage ?? '')
         const rounds = [...new Set(section.matches.map((m) => m.round_number))]
         return (
-          <div className="panel" key={section.title + rounds[0]}>
-            <h3>{section.title}</h3>
+          <div className="round" key={section.title + rounds[0]}>
+            <div className="round-header">
+              {section.title}
+              {!knockoutSection && <span className="muted small">Matchday {rounds[0]}</span>}
+            </div>
             {rounds.map((round) => (
-              <div className="round" key={round}>
-                {!knockoutSection && <div className="small muted">Matchday {round}</div>}
+              <div key={round}>
+                {!knockoutSection && round !== rounds[0] && (
+                  <div className="round-header muted">Matchday {round}</div>
+                )}
                 {section.matches
                   .filter((m) => m.round_number === round)
                   .map((m) => (
@@ -240,10 +235,11 @@ function Fixtures({
           </div>
         )
       })}
-      {sections.length === 0 && <div className="panel muted">No fixtures.</div>}
     </div>
   )
 }
+
+const asStr = (v: number | null | undefined) => (v === null || v === undefined ? '' : String(v))
 
 function MatchRow({
   match,
@@ -256,22 +252,28 @@ function MatchRow({
   nbPitches: number
   onChange: () => void
 }) {
-  const [home, setHome] = useState(match.home_score ?? '')
-  const [away, setAway] = useState(match.away_score ?? '')
-  const [hp, setHp] = useState(match.home_pen ?? '')
-  const [ap, setAp] = useState(match.away_pen ?? '')
+  const [home, setHome] = useState(asStr(match.home_score))
+  const [away, setAway] = useState(asStr(match.away_score))
+  const [hp, setHp] = useState(asStr(match.home_pen))
+  const [ap, setAp] = useState(asStr(match.away_pen))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setHome(match.home_score ?? '')
-    setAway(match.away_score ?? '')
-    setHp(match.home_pen ?? '')
-    setAp(match.away_pen ?? '')
+    setHome(asStr(match.home_score))
+    setAway(asStr(match.away_score))
+    setHp(asStr(match.home_pen))
+    setAp(asStr(match.away_pen))
   }, [match])
 
   const ready = match.home_id != null && match.away_id != null
   const knockout = isKnockout(match.stage)
+  const dirty =
+    home !== asStr(match.home_score) ||
+    away !== asStr(match.away_score) ||
+    hp !== asStr(match.home_pen) ||
+    ap !== asStr(match.away_pen)
+  const canSave = ready && home !== '' && away !== '' && dirty
 
   async function save() {
     setBusy(true)
@@ -338,18 +340,16 @@ function MatchRow({
           {awayWin && '✓ '}
           <span className="team-name">{match.away_name ?? <span className="muted">TBD</span>}</span>
         </div>
-        <div className="row" style={{ justifyContent: 'flex-end' }}>
-          {ready && (
-            <>
-              <button className="primary" disabled={busy || home === '' || away === ''} onClick={save}>
-                Save
-              </button>
-              {match.played && (
-                <button className="danger" disabled={busy} onClick={clear}>
-                  ✕
-                </button>
-              )}
-            </>
+        <div className="match-actions">
+          {canSave && (
+            <button className="primary" disabled={busy} onClick={save}>
+              Save
+            </button>
+          )}
+          {match.played && (
+            <button className="danger" disabled={busy} onClick={clear} title="Clear result">
+              ✕
+            </button>
           )}
         </div>
       </div>
@@ -382,34 +382,32 @@ function Bracket({ matches }: { matches: Match[] }) {
   const stages = KNOCKOUT_ORDER.filter((s) => byStage.has(s))
 
   return (
-    <div className="panel">
-      <div className="row" style={{ alignItems: 'stretch', gap: '1rem', overflowX: 'auto' }}>
-        {stages.map((stage) => (
-          <div className="bracket-col" key={stage}>
-            <h3>{STAGE_LABELS[stage] ?? stage}</h3>
-            <div className="bracket-round">
-              {byStage.get(stage)!.map((m) => (
-                <div className="match" key={m.id} style={{ gridTemplateColumns: '1fr 60px 1fr' }}>
-                  <div className={m.winner_id === m.home_id ? 'team won' : 'team'}>
-                    {m.home_name ?? <span className="muted">TBD</span>}
-                  </div>
-                  <div className="score" style={{ textAlign: 'center' }}>
-                    {m.played ? `${m.home_score}-${m.away_score}` : '–'}
-                    {m.home_pen != null && m.away_pen != null && (
-                      <div className="small muted">
-                        ({m.home_pen}-{m.away_pen})
-                      </div>
-                    )}
-                  </div>
-                  <div className={`team away ${m.winner_id === m.away_id ? 'won' : ''}`}>
-                    {m.away_name ?? <span className="muted">TBD</span>}
-                  </div>
+    <div className="row" style={{ alignItems: 'stretch', gap: '1rem', overflowX: 'auto' }}>
+      {stages.map((stage) => (
+        <div className="bracket-col" key={stage}>
+          <div className="round-header">{STAGE_LABELS[stage] ?? stage}</div>
+          <div className="bracket-round">
+            {byStage.get(stage)!.map((m) => (
+              <div className="match bracket-match" key={m.id}>
+                <div className={m.winner_id === m.home_id ? 'team won' : 'team'}>
+                  {m.home_name ?? <span className="muted">TBD</span>}
                 </div>
-              ))}
-            </div>
+                <div className="score" style={{ textAlign: 'center' }}>
+                  {m.played ? `${m.home_score}-${m.away_score}` : '–'}
+                  {m.home_pen != null && m.away_pen != null && (
+                    <div className="small muted">
+                      ({m.home_pen}-{m.away_pen})
+                    </div>
+                  )}
+                </div>
+                <div className={`team away ${m.winner_id === m.away_id ? 'won' : ''}`}>
+                  {m.away_name ?? <span className="muted">TBD</span>}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   )
 }

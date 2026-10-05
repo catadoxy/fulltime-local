@@ -120,7 +120,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .round h3 { color: var(--muted); font-weight: 600; }
 .match {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr) 150px;
   gap: 0.75rem;
   align-items: center;
   padding: 0.4rem 0.6rem;
@@ -133,16 +133,28 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .match .team.home { justify-content: flex-start; }
 .match .team.away { justify-content: flex-end; }
 .match .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.score-box { display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.match-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+.score-box { display: flex; align-items: center; justify-content: center; gap: 0.3rem; white-space: nowrap; }
 .score-input { width: 48px; text-align: center; }
 .pitch { color: var(--muted); font-size: 0.78rem; }
+.page-head { margin-bottom: 1.5rem; }
+.round-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  margin: 0.9rem 0 0.45rem;
+}
+.round-header:first-child { margin-top: 0; }
+.round-header .muted { font-weight: 500; }
+.row-header { font-weight: 600; color: var(--muted); margin: 0.4rem 0 0.35rem; }
+.bracket-match { grid-template-columns: minmax(0, 1fr) 60px minmax(0, 1fr); }
 
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; }
 .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.9rem; }
 .stat .value { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
 .stat .label { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
 .badge.small { padding: 0.05rem 0.35rem; font-size: 0.7rem; }
-.round-header { display: flex; align-items: center; gap: 0.5rem; }
 .rating-editor { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
 input[type='range'] { accent-color: var(--accent-2); width: 160px; }
 
