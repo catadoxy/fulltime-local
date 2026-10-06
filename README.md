@@ -1,58 +1,50 @@
 # FullTime Local
 
-A self-hosted, browser-based tournament manager for friend game nights. Runs
-locally (Docker or bare Python) and can import history from a legacy encrypted
-database export.
+A small self-hosted app for running tournaments with friends — brackets, tables,
+scores, stats and ratings. Everything stays on your machine.
 
-Built with **FastAPI + SQLite** (backend, `Room`-free clean schema) and a
-**React + Vite + TypeScript** single-page app, served from a single container.
+Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 
 ---
 
 ## Features
 
-- **5 tournament formats**
-  - Championship / round-robin (single or home-and-away)
-  - Knockout (with byes and an optional third-place match)
-  - Group stage + finals
-  - Swiss system (auto-paired each round)
-  - Champions League (league phase → knockout)
-- **Fair auto-scheduling** across a limited number of **pitches / TVs**, with
-  rest between a player's own games.
-- **Result entry** with automatic standings, knockout advancement, bracket view
-  and champion detection.
-- **Player management** and per-player ratings.
-- **Tournament notes** — record which game you played (FIFA, Rocket League…).
-- **Themes** — Floodlights, Midnight, Terrace, and a light Programme theme.
-- **Games tab** — record one-off / friendly matches outside any tournament; they
-  count toward each player's stats and rating.
-- **Optional password** — set `FTL_PASSWORD` to require a shared login.
-- **Import a legacy database** — upload an original encrypted
-  `*_database_*.db` export *or* a decrypted `.sqlite`. It decrypts
-  automatically and preserves historical tournaments, matches and champions.
-- **Docker-ready**, single port, data persisted on a mounted volume.
+- **5 tournament formats** — round-robin (single or home & away), knockout,
+  group + finals, Swiss, and Champions League.
+- **Auto-scheduling** across a set number of pitches/TVs, giving players fair rest.
+- **Results & standings** — enter scores, tables update, knockouts advance, with a
+  bracket view and an automatic champion.
+- **Friendlies** — record casual one-off matches alongside tournaments.
+- **Player profiles** — nickname + real name, plus separate tournament and
+  friendly tabs.
+- **Compare** any two players (head-to-head and side-by-side).
+- **Automatic ratings** — an Elo for tournaments and one for friendlies.
+- **Notes & themes** — tag a tournament with the game you played; 4 colour themes.
+- **Optional password** — set `FTL_PASSWORD` to require a login.
+- **Import** a legacy encrypted database export.
 
 ---
 
 ## Quick start (Docker)
 
-> Requires Docker with the Compose plugin.
+The image is public on GHCR — no login needed. Use this `docker-compose.yml`:
 
-The image is published to GitHub Container Registry, so you can run it **without
-cloning the repo** — just grab `docker-compose.yml` and:
-
-```bash
-docker compose up -d
+```yaml
+services:
+  app:
+    image: ghcr.io/catadoxy/fulltime-local:latest
+    ports:
+      - "8756:8756"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
 ```
 
-Then open <http://localhost:8756>.
-
-If the package is **private** (the default), log in to the registry first using a
-GitHub Personal Access Token with the `read:packages` scope:
-
 ```bash
-echo YOUR_GITHUB_PAT | docker login ghcr.io -u catadoxy --password-stdin
+docker compose up -d        # then open http://localhost:8756
 ```
+
+The SQLite database lives in `./data/fulltime.db` on the host.
 
 ### Build from source instead
 
@@ -62,104 +54,52 @@ cd fulltime-local
 docker compose -f docker-compose.build.yml up --build
 ```
 
-- The SQLite database lives in `./data/fulltime.db` on the host (mounted volume).
-- Interactive API docs: <http://localhost:8756/docs>
-
-To stop: `docker compose down` (the DB is a bind mount and is not removed).
-
 ---
 
-## Releases &amp; images
-
-The image is published to GitHub Container Registry by
-`.github/workflows/docker-publish.yml`:
-
-- Every push to `main` publishes `ghcr.io/catadoxy/fulltime-local:latest` plus a
-  `sha-…` tag.
-- Pushing a version tag publishes semver tags **and** creates a GitHub Release:
-
-  ```bash
-  git tag v0.2.0
-  git push origin v0.2.0
-  # -> ghcr.io/catadoxy/fulltime-local:0.2.0, :0.2, :0  + a GitHub Release
-  ```
-
-Pin a specific version in production by changing the compose image to e.g.
-`ghcr.io/catadoxy/fulltime-local:0.2.0`. `latest` follows `main`.
-
----
-
-## Local development
-
-Two processes: the API and the Vite dev server (which proxies `/api`).
+## Run for development
 
 **Backend**
-
 ```bash
 cd backend
-python -m venv .venv
-# Windows: .venv\Scripts\activate | Linux/macOS: source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8756
 ```
 
 **Frontend**
-
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:5173
-```
-
-The dev server proxies `/api` to `http://localhost:8756` (see `vite.config.ts`).
-
-**Production-style (single port)** — build the SPA and let FastAPI serve it:
-
-```bash
-cd frontend && npm run build
-cd ../backend
-# Windows (PowerShell)
-$env:FTL_FRONTEND_DIR="../frontend/dist"; uvicorn app.main:app --port 8756
+npm run dev        # http://localhost:5173 (proxies /api to :8756)
 ```
 
 ---
 
-## Player ratings
+## Ratings
 
-Ratings are **calculated automatically** from results — there is nothing to set
-by hand. They use an **Elo** system (the chess/tennis method), which accounts for
-*who* you beat, not just how often:
+Ratings are calculated automatically — nothing to set by hand. Each player has
+**two Elo ratings**, both starting at 1000:
 
-- Everyone starts at **1000 Elo**.
-- After a match: `expected = 1 / (1 + 10^((opponent − you)/400))`, then
-  `you += K × (actual − expected)` (`actual` = 1 win / 0.5 draw / 0 loss).
-- `K` is higher for provisional players (<10 matches → 40; <30 → 24; else 16),
-  so early results move quickly and it settles over time.
-- A mild margin-of-victory bonus is applied (`1 + min(goalDiff, 4) × 0.125`).
-- Penalty shoot-outs count as draws.
+- **Tournament Elo** — from tournament matches only (Players list + Tournaments tab).
+- **Friendly Elo** — from friendlies only (Friendlies tab).
 
-The familiar **0–100** figure is derived as `round(50 + (elo − 1000) / 8)`:
-1000 → 50, 1200 → 75, 800 → 25. Elo is shown alongside it on a player's profile.
-Ratings are recomputed from your full match history on every request, so they are
-always consistent with the recorded results.
+Per match: `expected = 1 / (1 + 10^((opponent − you) / 400))`, then
+`you += K × margin × (actual − expected)`, where a win is 1, a draw 0.5, a loss 0,
+`K` is larger for new players, and `margin` gives a small bonus for a bigger win.
+Penalty shoot-outs count as draws.
+
+The 0–100 figure shown is `round(50 + (elo − 1000) / 8)` (1000 → 50, 1200 → 75).
 
 ---
 
-## Importing your existing data
+## Importing existing data
 
-1. Open **Data** in the app.
-2. Upload either:
-   - an original encrypted export `<name>_database_<timestamp>.db`, or
-   - the decrypted `.sqlite` file.
-3. Historical tournaments are added as `completed`, with players, matches and
-   champions preserved.
+Open **Data** and upload either an encrypted export (`<name>_database_<timestamp>.db`)
+or a decrypted `.sqlite`. Historical tournaments are imported as completed.
 
-The decryption routine (AES-256/ECB with a key derived from the source app's
-package name) is also available standalone:
-
+To decrypt an export standalone:
 ```bash
 python decrypt_export.py "export.db"
-# -> writes export_decrypted.sqlite
 ```
 
 ---
@@ -168,58 +108,32 @@ python decrypt_export.py "export.db"
 
 All optional, via environment variables:
 
-| Variable             | Default                    | Purpose                                  |
-| -------------------- | -------------------------- | ---------------------------------------- |
-| `FTL_DATA_DIR`       | `backend/data`             | Directory holding the SQLite file        |
-| `FTL_DATABASE_URL`   | `sqlite:///<DATA_DIR>/fulltime.db` | Override the DB URL entirely    |
-| `FTL_FRONTEND_DIR`   | `frontend/dist`            | Where the built SPA is served from       |
-| `FTL_PASSWORD`       | *(unset)*                  | If set, require this shared password to log in |
-| `FTL_SECRET`         | auto (file in data dir)    | Signing key for the session cookie       |
+| Variable           | Default                            | Purpose                          |
+| ------------------ | ---------------------------------- | -------------------------------- |
+| `FTL_DATA_DIR`     | `backend/data`                     | folder holding the SQLite DB     |
+| `FTL_DATABASE_URL` | `sqlite:///<DATA_DIR>/fulltime.db` | full database URL override       |
+| `FTL_FRONTEND_DIR` | `frontend/dist`                    | where the built SPA is served    |
+| `FTL_PASSWORD`     | *(unset)*                          | require this password to log in  |
+| `FTL_SECRET`       | auto (file in data dir)            | session-cookie signing key       |
 
 ---
 
-## Testing
+## Releases
+
+Every push to `main` publishes `ghcr.io/catadoxy/fulltime-local:latest`. A version
+tag publishes semver images (e.g. `:0.3.0`) **and** creates a GitHub Release:
 
 ```bash
-cd backend
-python -m pytest -q
+git tag v0.3.0 && git push origin v0.3.0
 ```
 
-Covers fixture generation for every format, scheduling pitch/slot limits,
-standings, knockout progression (incl. byes and penalty shoot-outs), Swiss
-round generation, and the legacy importer.
+Pin a version in production by using e.g. `ghcr.io/catadoxy/fulltime-local:0.3.0`.
 
 ---
 
-## Project layout
+## Development notes
 
-```
-backend/
-  app/
-    main.py            FastAPI app + SPA serving
-    database.py        SQLAlchemy engine/session
-    models.py          Player, Tournament, Group, Participant, Match
-    schemas.py         Pydantic request/response models
-    serializers.py     ORM -> API dicts
-    legacy_import.py   Legacy import (decrypts encrypted exports too)
-    engine/            pure algorithms: round_robin, knockout, swiss, scheduling
-    services/          fixtures (creation), standings, results (progression)
-    routers/           players, tournaments, meta/import
-  tests/               pytest suite
-frontend/
-  src/
-    pages/             Tournaments, TournamentDetail, Players, Import
-    api.ts, types.ts   typed API client
-Dockerfile             multi-stage (Node build -> Python runtime)
-docker-compose.yml
-```
-
----
-
-## Notes / possible next steps
-
-- Match simulator using player ratings (the schema already stores `rating`).
-- Independent "pitches"/venue management (the scheduler already supports N).
-- Two-legged knockout ties.
-- Authentication if you ever expose it beyond your LAN (currently no auth;
-  intended for local/friends use).
+- Tests: `cd backend && python -m pytest -q`
+- Layout: `backend/app` (FastAPI — routers, models, `engine/` algorithms,
+  `services/`) and `frontend/src` (React pages + typed API client).
+- `Dockerfile` is a multi-stage build (Node build → Python runtime).
