@@ -25,6 +25,21 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 
 ---
 
+## Screenshots
+
+_Screenshots use mock data._
+
+| | |
+|---|---|
+| ![Tournaments](docs/screenshots/tournaments.png) | ![Tournament](docs/screenshots/tournament.png) |
+| Tournaments list | A league: standings + fixtures |
+| ![Player profile](docs/screenshots/player-tournaments.png) | ![Compare](docs/screenshots/compare.png) |
+| Player profile (tournaments / friendlies tabs) | Compare two players |
+| ![Friendlies](docs/screenshots/friendlies.png) | ![Player friendlies](docs/screenshots/player-friendlies.png) |
+| Recording friendlies | A player's friendly record |
+
+---
+
 ## Quick start (Docker)
 
 The image is public on GHCR — no login needed. Use this `docker-compose.yml`:
