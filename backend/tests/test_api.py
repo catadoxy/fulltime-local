@@ -432,6 +432,16 @@ def test_import_dedup_and_replace(tmp_path):
     assert len(client.get("/api/tournaments").json()) == 1
 
 
+def test_tournament_list_sorted_by_date():
+    _reset()
+    ids = _make_players(2)
+    # "Newer" created first, "Older" created second (so its created_at is later).
+    client.post("/api/tournaments", json={"name": "Newer", "format": "league", "player_ids": ids, "start_date": "2024-01-01"})
+    client.post("/api/tournaments", json={"name": "Older", "format": "league", "player_ids": ids, "start_date": "2014-01-01"})
+    names = [t["name"] for t in client.get("/api/tournaments").json()]
+    assert names.index("Newer") < names.index("Older")
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

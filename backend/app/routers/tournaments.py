@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -15,7 +15,9 @@ router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
 @router.get("")
 def list_tournaments(db: Session = Depends(get_db)):
-    tours = db.execute(select(Tournament).order_by(Tournament.created_at.desc())).scalars().all()
+    # Newest first by tournament date, falling back to creation time.
+    order = func.coalesce(Tournament.start_date, func.date(Tournament.created_at)).desc()
+    tours = db.execute(select(Tournament).order_by(order, Tournament.id.desc())).scalars().all()
     return [tournament_out(t) for t in tours]
 
 
