@@ -151,3 +151,10 @@ Pin a version in production by using e.g. `ghcr.io/catadoxy/fulltime-local:0.3.0
 - Layout: `backend/app` (FastAPI — routers, models, `engine/` algorithms,
   `services/`) and `frontend/src` (React pages + typed API client).
 - `Dockerfile` is a multi-stage build (Node build → Python runtime).
+
+---
+
+## License
+
+[MIT](LICENSE)
+
