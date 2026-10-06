@@ -29,6 +29,9 @@ def _migrate() -> None:
         cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(tournaments)")}
         if cols and "note" not in cols:
             conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN note VARCHAR(300)")
+        pcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(players)")}
+        if pcols and "real_name" not in pcols:
+            conn.exec_driver_sql("ALTER TABLE players ADD COLUMN real_name VARCHAR(120)")
 
 
 @app.on_event("startup")

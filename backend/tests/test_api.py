@@ -353,6 +353,16 @@ def test_compare():
     assert client.get(f"/api/compare?a={ids[0]}&b={ids[0]}").status_code == 400
 
 
+def test_player_real_name():
+    _reset()
+    p = client.post("/api/players", json={"name": "nick", "real_name": "Real Name"}).json()
+    assert p["real_name"] == "Real Name"
+    r = client.patch(f"/api/players/{p['id']}", json={"real_name": "New Name"})
+    assert r.status_code == 200
+    assert r.json()["real_name"] == "New Name"
+    assert client.get("/api/players").json()[0]["real_name"] == "New Name"
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

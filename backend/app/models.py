@@ -26,6 +26,7 @@ class Player(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    real_name: Mapped[str | None] = mapped_column(String(120), default=None)
     email: Mapped[str | None] = mapped_column(String(200), default=None)
     picture: Mapped[str | None] = mapped_column(String(500), default=None)
     rating: Mapped[int] = mapped_column(Integer, default=50)  # 0..100, for seeding/simulator

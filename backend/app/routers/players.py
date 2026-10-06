@@ -35,6 +35,7 @@ def list_players(db: Session = Depends(get_db)):
         {
             "id": p.id,
             "name": p.name,
+            "real_name": p.real_name,
             "email": p.email,
             "picture": p.picture,
             "rating": ratings.get(p.id, {}).get("rating", 50),

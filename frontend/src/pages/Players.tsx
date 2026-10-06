@@ -66,6 +66,7 @@ export default function Players() {
               <tr key={p.id}>
                 <td>
                   <Link to={`/players/${p.id}`}>{p.name}</Link>
+                  {p.real_name && <div className="muted small">{p.real_name}</div>}
                 </td>
                 <td>
                   <span className="badge" title={`Elo ${p.elo ?? 1000}`}>

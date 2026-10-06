@@ -8,6 +8,7 @@ export type TournamentFormat =
 export interface Player {
   id: number
   name: string
+  real_name?: string | null
   email?: string | null
   picture?: string | null
   rating: number

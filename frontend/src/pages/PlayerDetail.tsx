@@ -38,20 +38,97 @@ export default function PlayerDetail() {
   const [stats, setStats] = useState<PlayerStats | null>(null)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<'tournaments' | 'friendlies'>('tournaments')
+  const [editing, setEditing] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [realDraft, setRealDraft] = useState('')
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  const load = () => {
     api.playerStats(pid).then(setStats).catch((e) => setError(e.message))
-  }, [pid])
+  }
+  useEffect(load, [pid])
 
   if (!stats) return <div className="panel">{error || 'Loading…'}</div>
 
   const { player, rating, tournaments: tr, friendlies: fr } = stats
 
+  async function savePlayer() {
+    setSaving(true)
+    setError('')
+    try {
+      await api.updatePlayer(pid, {
+        name: nameDraft.trim() || player.name,
+        real_name: realDraft.trim() || null,
+      })
+      setEditing(false)
+      load()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div>
       <div className="row between page-head">
-        <div>
-          <h1 style={{ marginBottom: 6 }}>{player.name}</h1>
+        <div className="grow">
+          {editing ? (
+            <div style={{ display: 'grid', gap: '0.55rem', maxWidth: 460 }}>
+              <div>
+                <label htmlFor="p-name">Nickname</label>
+                <input
+                  id="p-name"
+                  value={nameDraft}
+                  autoFocus
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="p-real">Real name</label>
+                <input
+                  id="p-real"
+                  value={realDraft}
+                  placeholder="e.g. Cătălin Popescu"
+                  onChange={(e) => setRealDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') savePlayer()
+                    if (e.key === 'Escape') setEditing(false)
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div className="row">
+                <button className="primary" disabled={saving} onClick={savePlayer}>
+                  Save
+                </button>
+                <button onClick={() => setEditing(false)}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1 style={{ marginBottom: player.real_name ? 2 : 6 }}>
+                {player.name}{' '}
+                <button
+                  className="btn"
+                  style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
+                  onClick={() => {
+                    setNameDraft(player.name)
+                    setRealDraft(player.real_name ?? '')
+                    setEditing(true)
+                  }}
+                >
+                  ✎ Edit
+                </button>
+              </h1>
+              {player.real_name && (
+                <div className="small muted" style={{ marginBottom: 4 }}>
+                  {player.real_name}
+                </div>
+              )}
+            </>
+          )}
           <div className="row small muted">
             <span>
               Participated in <strong>{tr.totals.tournaments}</strong>{' '}

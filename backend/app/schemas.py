@@ -11,6 +11,7 @@ TournamentFormat = Literal["league", "knockout", "groups_knockout", "swiss", "ch
 # ---------- Players ----------
 class PlayerBase(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    real_name: str | None = None
     email: str | None = None
     picture: str | None = None
     rating: int = Field(default=50, ge=0, le=100)
@@ -22,6 +23,7 @@ class PlayerCreate(PlayerBase):
 
 class PlayerUpdate(BaseModel):
     name: str | None = None
+    real_name: str | None = None
     email: str | None = None
     picture: str | None = None
     rating: int | None = Field(default=None, ge=0, le=100)

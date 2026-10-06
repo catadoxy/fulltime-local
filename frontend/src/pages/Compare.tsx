@@ -124,16 +124,24 @@ export default function Compare() {
             <h3 style={{ marginTop: 0 }}>Head to head</h3>
             <div className="h2h">
               <div className="h2h-name">{data.a.player.name}</div>
-              <div className="h2h-score">
-                {data.head_to_head.a_wins}
-                <span className="muted">–</span>
-                {data.head_to_head.b_wins}
-              </div>
               <div className="h2h-name away">{data.b.player.name}</div>
             </div>
-            <div className="small muted" style={{ marginBottom: '0.75rem' }}>
-              {data.head_to_head.played} played · {data.head_to_head.draws} drawn · goals{' '}
-              {data.head_to_head.a_goals}–{data.head_to_head.b_goals}
+            <div className="h2h-grid">
+              <div>
+                <div className="h2h-num">{data.head_to_head.a_wins}</div>
+                <div className="small muted">wins</div>
+              </div>
+              <div>
+                <div className="h2h-num">{data.head_to_head.draws}</div>
+                <div className="small muted">draws</div>
+              </div>
+              <div>
+                <div className="h2h-num">{data.head_to_head.b_wins}</div>
+                <div className="small muted">wins</div>
+              </div>
+            </div>
+            <div className="small muted" style={{ textAlign: 'center', marginBottom: '0.75rem' }}>
+              {data.head_to_head.played} played · goals {data.head_to_head.a_goals}–{data.head_to_head.b_goals}
             </div>
             <table>
               <thead>
@@ -193,7 +201,7 @@ export default function Compare() {
                 <Row label="Rating" a={data.a.rating} b={data.b.rating} />
                 <Row label="Elo" a={data.a.elo} b={data.b.elo} />
                 <Row label="Titles" a={data.a.tournaments.titles ?? 0} b={data.b.tournaments.titles ?? 0} />
-                <Row label="Matches" a={data.a.tournaments.played} b={data.b.tournaments.played} />
+                <Row label="Matches" a={data.a.tournaments.played} b={data.b.tournaments.played} neutral />
                 <Row label="Wins" a={data.a.tournaments.won} b={data.b.tournaments.won} />
                 <Row label="Draws" a={data.a.tournaments.drawn} b={data.b.tournaments.drawn} neutral />
                 <Row label="Losses" a={data.a.tournaments.lost} b={data.b.tournaments.lost} lower />
@@ -214,7 +222,7 @@ export default function Compare() {
                 {(data.a.friendlies.played > 0 || data.b.friendlies.played > 0) && (
                   <>
                     <Section label="Friendlies" />
-                    <Row label="Played" a={data.a.friendlies.played} b={data.b.friendlies.played} />
+                    <Row label="Played" a={data.a.friendlies.played} b={data.b.friendlies.played} neutral />
                     <Row label="Wins" a={data.a.friendlies.won} b={data.b.friendlies.won} />
                     <Row label="Draws" a={data.a.friendlies.drawn} b={data.b.friendlies.drawn} neutral />
                     <Row label="Losses" a={data.a.friendlies.lost} b={data.b.friendlies.lost} lower />
