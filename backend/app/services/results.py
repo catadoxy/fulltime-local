@@ -25,7 +25,7 @@ def _knockout_matches(db: Session, t: Tournament) -> list[Match]:
 
 
 def propagate(db: Session, t: Tournament, m: Match, winner_id: int) -> None:
-    if m.next_match_id and winner_id is not None:
+    if m.next_match_id:
         nxt = db.get(Match, m.next_match_id)
         if nxt is not None and not nxt.played:
             if m.next_slot == "home":
@@ -101,15 +101,57 @@ def set_result(db: Session, m: Match, payload) -> Match:
 
 def clear_result(db: Session, m: Match) -> Match:
     t = m.tournament
-    if m.next_match_id:
-        nxt = db.get(Match, m.next_match_id)
-        if nxt is not None and not nxt.played:
-            if m.next_slot == "home":
-                nxt.home_id = None
-            else:
-                nxt.away_id = None
-    if m.stage == "final" and t.champion_id == m.winner_id:
+    old_winner = m.winner_id
+    old_next_id = m.next_match_id
+    old_slot = m.next_slot
+    # Loser is needed to unwind auto-filled third-place matches (SF -> third
+    # is not wired via next_match_id).
+    old_loser: int | None = None
+    if m.home_id is not None and m.away_id is not None and old_winner is not None:
+        old_loser = m.home_id if old_winner == m.away_id else m.away_id
+
+    if old_next_id and old_winner is not None:
+        nxt = db.get(Match, old_next_id)
+        if nxt is not None:
+            fed_slot = (old_slot == "home" and nxt.home_id == old_winner) or (
+                old_slot != "home" and nxt.away_id == old_winner
+            )
+            if fed_slot:
+                if nxt.played:
+                    # Recursively clears its own downstream.
+                    clear_result(db, nxt)
+                    nxt = db.get(Match, old_next_id)
+                if nxt is not None and not nxt.played:
+                    if old_slot == "home":
+                        nxt.home_id = None
+                    else:
+                        nxt.away_id = None
+
+    # Unwind auto-filled third-place match fed by semifinal losers.
+    if m.stage == "sf" and old_loser is not None:
+        third = (
+            db.execute(
+                select(Match).where(
+                    Match.tournament_id == t.id, Match.stage == "third"
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for tm in third:
+            if tm.played:
+                continue
+            if tm.home_id == old_loser:
+                tm.home_id = None
+            if tm.away_id == old_loser:
+                tm.away_id = None
+
+    if m.stage == "final" and old_winner is not None and t.champion_id == old_winner:
         t.champion_id = None
+        t.status = "active"
+        t.end_date = None
+    elif t.status == "completed":
+        # Clearing any result re-opens the tournament.
         t.status = "active"
         t.end_date = None
     m.played = False

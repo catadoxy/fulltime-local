@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -10,11 +12,25 @@ from .config import APP_NAME, APP_VERSION, FRONTEND_DIR
 from .database import Base, engine
 from .routers import compare, games, imports, players, tournaments
 
-app = FastAPI(title=APP_NAME, version=APP_VERSION)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    _migrate()
+    # NOTE: no silent data mutation on startup. Previously this called
+    # complete_finished_tournaments() + reconcile_champions() on every boot,
+    # which could flip tournament status without an explicit user action.
+    # Use POST /api/tournaments/{id}/close or the reconcile service instead.
+    yield
+
+
+app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # local app; tighten if you expose it
+    # Same-origin in production (SPA is served by FastAPI).
+    # Only allow the Vite dev server cross-origin during development.
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,16 +50,9 @@ def _migrate() -> None:
             conn.exec_driver_sql("ALTER TABLE players ADD COLUMN real_name VARCHAR(120)")
 
 
-@app.on_event("startup")
-def _startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    _migrate()
-    from .database import SessionLocal
-    from .services.results import complete_finished_tournaments, reconcile_champions
-
-    with SessionLocal() as db:
-        complete_finished_tournaments(db)
-        reconcile_champions(db)
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "version": APP_VERSION}
 
 
 app.include_router(auth.router)
@@ -66,11 +75,6 @@ async def _auth_guard(request, call_next):
         if protected and not auth.is_authenticated(request):
             return JSONResponse({"detail": "Not authenticated"}, status_code=401)
     return await call_next(request)
-
-
-@app.get("/api/health")
-def health():
-    return {"status": "ok", "version": APP_VERSION}
 
 
 # ---- Serve the built React SPA (production / Docker) ---------------------- #

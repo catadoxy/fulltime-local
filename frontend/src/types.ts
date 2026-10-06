@@ -31,6 +31,28 @@ export interface Participant {
   group_id: number | null
 }
 
+export interface TournamentSettings {
+  points_win?: number
+  points_draw?: number
+  points_loss?: number
+  home_away?: boolean
+  double_round?: boolean
+  third_place?: boolean
+  seeded?: boolean
+  groups?: number
+  nb_groups?: number
+  qualify_per_group?: number
+  qualifiers_per_group?: number
+  qualifiers?: number
+  rounds?: number
+  current_round?: number
+  knockout_seeded?: boolean
+  imported?: boolean
+  source_id?: number
+  import_hash?: string
+  [key: string]: number | boolean | string | null | undefined
+}
+
 export interface Tournament {
   id: number
   name: string
@@ -39,7 +61,7 @@ export interface Tournament {
   players?: number
   status: 'active' | 'completed'
   nb_pitches: number
-  settings: Record<string, any>
+  settings: TournamentSettings
   start_date: string | null
   end_date: string | null
   champion_id: number | null
@@ -94,7 +116,7 @@ export interface Table {
 
 export interface Meta {
   formats: { id: TournamentFormat; label: string }[]
-  default_settings: Record<string, Record<string, any>>
+  default_settings: Record<string, TournamentSettings>
 }
 
 export interface PlayerTotals {

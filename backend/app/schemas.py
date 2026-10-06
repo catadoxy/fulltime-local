@@ -100,6 +100,7 @@ class MatchOut(BaseModel):
     group_id: int | None
     round_number: int
     match_number: int
+    slot: int = 0
     pitch: int | None
     home_id: int | None
     away_id: int | None

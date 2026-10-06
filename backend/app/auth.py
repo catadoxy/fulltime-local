@@ -59,16 +59,19 @@ def status(request: Request):
 
 
 @router.post("/login")
-def login(payload: LoginIn, response: Response):
+def login(payload: LoginIn, response: Response, request: Request):
     if not AUTH_ENABLED:
         return {"ok": True, "auth_required": False}
     if not hmac.compare_digest(payload.password, PASSWORD or ""):
         raise HTTPException(401, "Incorrect password")
+    # `secure` only when the request itself came over HTTPS, so local HTTP still works.
+    is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     response.set_cookie(
         COOKIE_NAME,
         _token(),
         httponly=True,
         samesite="lax",
+        secure=is_https,
         max_age=SESSION_MAX_AGE,
     )
     return {"ok": True}

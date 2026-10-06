@@ -1,18 +1,35 @@
 # dependencies
 frontend/node_modules
 backend/.venv
+.venv/
 **/__pycache__/
 *.pyc
 
 # build output
 frontend/dist
+coverage/
+htmlcov/
+.pytest_cache/
 
 # runtime data
 data/
 *.sqlite
+*.db
+!.gitkeep
+
+# env / secrets
+.env
+.env.*
+!.env.example
 
 # local agent skills (keep out of the repo)
 .agents/
 
 # personal database exports — never commit these
 *_database_*.db
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

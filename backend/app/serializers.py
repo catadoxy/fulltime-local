@@ -34,8 +34,11 @@ def participant_out(p: Participant) -> dict:
         "player": {
             "id": p.player.id,
             "name": p.player.name,
+            "real_name": p.player.real_name,
             "email": p.player.email,
             "picture": p.player.picture,
+            # NOTE: seed rating stored on the player row, not live Elo.
+            # Live Elo is computed via services.ratings.compute_ratings().
             "rating": p.player.rating,
         },
         "seed": p.seed,

@@ -14,8 +14,18 @@ router = APIRouter(prefix="/api/players", tags=["players"])
 
 
 @router.get("", response_model=list[PlayerOut])
-def list_players(db: Session = Depends(get_db)):
-    players = db.execute(select(Player).order_by(Player.name)).scalars().all()
+def list_players(
+    db: Session = Depends(get_db),
+    limit: int = 500,
+    offset: int = 0,
+):
+    limit = max(1, min(limit, 1000))
+    offset = max(0, offset)
+    players = (
+        db.execute(select(Player).order_by(Player.name).limit(limit).offset(offset))
+        .scalars()
+        .all()
+    )
     ratings = compute_ratings(db, friendlies=False)
 
     counts = dict(
@@ -95,11 +105,29 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
     t_rating = compute_ratings(db, friendlies=False).get(player_id, {"elo": 1000, "rating": 50})
     f_rating = compute_ratings(db, tournaments=False).get(player_id, {"elo": 1000, "rating": 50})
 
-    parts = (
-        db.execute(select(Participant).where(Participant.player_id == player_id))
+    # One query for participations + tournaments (avoids N+1 db.get per tournament).
+    part_rows = (
+        db.execute(
+            select(Participant, Tournament)
+            .join(Tournament, Participant.tournament_id == Tournament.id)
+            .where(Participant.player_id == player_id)
+        ).all()
+    )
+
+    # One query for all tournament matches involving this player.
+    all_matches = (
+        db.execute(
+            select(Match).where(
+                Match.played.is_(True),
+                or_(Match.home_id == player_id, Match.away_id == player_id),
+            )
+        )
         .scalars()
         .all()
     )
+    matches_by_tid: dict[int, list] = {}
+    for m in all_matches:
+        matches_by_tid.setdefault(m.tournament_id, []).append(m)
 
     t_totals = {
         "tournaments": 0,
@@ -113,21 +141,8 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
     }
     history: list[dict] = []
 
-    for p in parts:
-        t = db.get(Tournament, p.tournament_id)
-        if not t:
-            continue
-        matches = (
-            db.execute(
-                select(Match).where(
-                    Match.tournament_id == t.id,
-                    Match.played.is_(True),
-                    or_(Match.home_id == player_id, Match.away_id == player_id),
-                )
-            )
-            .scalars()
-            .all()
-        )
+    for _p, t in part_rows:
+        matches = matches_by_tid.get(t.id, [])
 
         played = won = drawn = lost = gf = ga = 0
         for m in matches:
@@ -178,17 +193,24 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
         round(100 * t_totals["won"] / t_totals["played"]) if t_totals["played"] else 0
     )
 
-    # Standalone friendlies.
+    # Standalone friendlies (batch opponent names to avoid lazy-load N+1).
     games = (
         db.execute(select(Game).where(or_(Game.home_id == player_id, Game.away_id == player_id)))
         .scalars()
         .all()
     )
+    opp_ids = {g.away_id if g.home_id == player_id else g.home_id for g in games}
+    opp_names: dict[int, str] = {}
+    if opp_ids:
+        opp_names = {
+            p.id: p.name
+            for p in db.execute(select(Player).where(Player.id.in_(opp_ids))).scalars().all()
+        }
     f_totals = {"played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0, "goals_against": 0}
     f_matches: list[dict] = []
     for g in games:
         home = g.home_id == player_id
-        opponent = g.away if home else g.home
+        opp_id = g.away_id if home else g.home_id
         f, a = (g.home_score, g.away_score) if home else (g.away_score, g.home_score)
         result = "W" if f > a else "L" if f < a else "D"
         f_totals["played"] += 1
@@ -199,8 +221,8 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
             {
                 "id": g.id,
                 "played_at": g.played_at,
-                "opponent_id": opponent.id if opponent else None,
-                "opponent_name": opponent.name if opponent else "—",
+                "opponent_id": opp_id,
+                "opponent_name": opp_names.get(opp_id, "—"),
                 "home": home,
                 "goals_for": f,
                 "goals_against": a,
