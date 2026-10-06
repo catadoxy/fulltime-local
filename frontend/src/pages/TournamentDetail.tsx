@@ -381,7 +381,9 @@ function MatchRow({
     setAway(asStr(match.away_score))
     setHp(asStr(match.home_pen))
     setAp(asStr(match.away_pen))
-  }, [match])
+    // Only re-sync when this match's stored values change — not on every
+    // refetch (which would wipe scores typed into other rows).
+  }, [match.id, match.home_score, match.away_score, match.home_pen, match.away_pen])
 
   const ready = match.home_id != null && match.away_id != null
   const knockout = isKnockout(match.stage)

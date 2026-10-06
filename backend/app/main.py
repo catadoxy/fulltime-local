@@ -39,10 +39,11 @@ def _startup() -> None:
     Base.metadata.create_all(bind=engine)
     _migrate()
     from .database import SessionLocal
-    from .services.results import complete_finished_tournaments
+    from .services.results import complete_finished_tournaments, reconcile_champions
 
     with SessionLocal() as db:
         complete_finished_tournaments(db)
+        reconcile_champions(db)
 
 
 app.include_router(auth.router)

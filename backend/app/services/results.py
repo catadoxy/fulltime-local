@@ -138,6 +138,16 @@ def _post_process(db: Session, t: Tournament, m: Match) -> None:
 
     _maybe_complete(db, t)
 
+    # For table formats the champion is simply the final table leader, so
+    # recompute it on every result change (e.g. after editing a score).
+    if t.format in ("league", "swiss") and t.status == "completed":
+        from .standings import standings
+
+        table = standings(db, t)
+        if table:
+            t.champion_id = table[0]["player_id"]
+        db.flush()
+
 
 def _maybe_complete(db: Session, t: Tournament) -> None:
     """Mark a tournament completed once every match has been played."""
@@ -182,24 +192,52 @@ def complete_finished_tournaments(db: Session) -> int:
     return changed
 
 
+def reconcile_champions(db: Session) -> int:
+    """Fix stale champions on completed league/Swiss tournaments we created.
+
+    Imported tournaments keep the champion from their source, so they're skipped.
+    """
+    from .standings import standings
+
+    changed = 0
+    tours = (
+        db.execute(
+            select(Tournament).where(
+                Tournament.format.in_(("league", "swiss")),
+                Tournament.status == "completed",
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for t in tours:
+        if (t.settings or {}).get("imported"):
+            continue
+        table = standings(db, t)
+        if table and t.champion_id != table[0]["player_id"]:
+            t.champion_id = table[0]["player_id"]
+            changed += 1
+    db.commit()
+    return changed
+
+
 def close_tournament(db: Session, t: Tournament) -> Tournament:
     """Manually close a tournament: pick a champion if we can, then complete it."""
-    if t.champion_id is None:
-        if t.format in ("league", "swiss"):
-            from .standings import standings
+    if t.format in ("league", "swiss"):
+        from .standings import standings
 
-            table = standings(db, t)
-            if table:
-                t.champion_id = table[0]["player_id"]
-        if t.champion_id is None:
-            final = db.execute(
-                select(Match)
-                .where(Match.tournament_id == t.id, Match.stage == "final")
-                .scalars()
-                .first()
-            )
-            if final is not None and final.winner_id is not None:
-                t.champion_id = final.winner_id
+        table = standings(db, t)
+        if table:
+            t.champion_id = table[0]["player_id"]
+    elif t.champion_id is None:
+        final = db.execute(
+            select(Match)
+            .where(Match.tournament_id == t.id, Match.stage == "final")
+            .scalars()
+            .first()
+        )
+        if final is not None and final.winner_id is not None:
+            t.champion_id = final.winner_id
 
     t.status = "completed"
     if t.end_date is None:

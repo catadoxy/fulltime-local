@@ -442,6 +442,26 @@ def test_tournament_list_sorted_by_date():
     assert names.index("Newer") < names.index("Older")
 
 
+def test_champion_updates_after_edit():
+    _reset()
+    ids = _make_players(2)
+    tid = client.post(
+        "/api/tournaments", json={"name": "L", "format": "league", "player_ids": ids}
+    ).json()["id"]
+    m = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+
+    client.post(
+        f"/api/tournaments/{tid}/matches/{m['id']}/result", json={"home_score": 2, "away_score": 0}
+    )
+    assert client.get(f"/api/tournaments/{tid}").json()["champion_id"] == m["home_id"]
+
+    # Editing the result flips the standings leader -> champion follows.
+    client.post(
+        f"/api/tournaments/{tid}/matches/{m['id']}/result", json={"home_score": 0, "away_score": 2}
+    )
+    assert client.get(f"/api/tournaments/{tid}").json()["champion_id"] == m["away_id"]
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")
