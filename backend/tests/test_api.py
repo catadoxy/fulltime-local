@@ -364,6 +364,15 @@ def test_player_real_name():
     assert client.get("/api/players").json()[0]["real_name"] == "New Name"
 
 
+def test_import_rejects_non_sqlite():
+    _reset()
+    resp = client.post(
+        "/api/import/legacy",
+        files={"file": ("export.db", b"not a sqlite database at all", "application/octet-stream")},
+    )
+    assert resp.status_code == 400
+
+
 def test_backup_export():
     _reset()
     r = client.get("/api/export/backup")

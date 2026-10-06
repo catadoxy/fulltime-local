@@ -21,7 +21,7 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; 4 colour themes.
 - **Optional password** — set `FTL_PASSWORD` to require a login.
-- **Import** a legacy encrypted database export.
+- **Import** a legacy SQLite database.
 
 ---
 
@@ -94,13 +94,9 @@ The 0–100 figure shown is `round(50 + (elo − 1000) / 8)` (1000 → 50, 1200 
 
 ## Importing existing data
 
-Open **Data** and upload either an encrypted export (`<name>_database_<timestamp>.db`)
-or a decrypted `.sqlite`. Historical tournaments are imported as completed.
-
-To decrypt an export standalone:
-```bash
-python decrypt_export.py "export.db"
-```
+Open **Data** and upload an **unencrypted** SQLite `.sqlite` database (the source
+app's schema). Historical tournaments are imported as completed. Encrypted
+exports are not supported — decrypt them first if needed.
 
 ---
 

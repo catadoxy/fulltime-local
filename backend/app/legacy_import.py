@@ -1,14 +1,11 @@
-"""Import a legacy encrypted database export (interoperability).
+"""Import a legacy SQLite database (unencrypted).
 
-Accepts either a decrypted ``.sqlite`` file or the original encrypted ``.db``
-export (decrypted on the fly using the export's own scheme). Historical
+Uploads a plain SQLite file using the source app's schema. Historical
 tournaments are imported as completed records so their matches and stats are
 preserved.
 """
 from __future__ import annotations
 
-import base64
-import hashlib
 import os
 import sqlite3
 import tempfile
@@ -21,8 +18,6 @@ from .models import Group, Match, Participant, Player, Tournament
 from .engine.knockout import STAGE_NAMES
 
 SQLITE_MAGIC = b"SQLite format 3\x00"
-SOURCE_PACKAGE = "legacy.app"
-SOURCE_KEY_SUFFIX = ".1124090819881992"
 
 FORMAT_BY_TYPE = {
     1: "league",
@@ -33,27 +28,9 @@ FORMAT_BY_TYPE = {
 }
 
 
-def _decrypt(data: bytes) -> bytes:
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
-    raw = (SOURCE_PACKAGE + SOURCE_KEY_SUFFIX).encode("utf-8")
-    key_string = base64.b64encode(raw).decode("ascii") + "\n"
-    key = hashlib.sha256(key_string.encode("utf-8")).digest()
-    dec = Cipher(algorithms.AES(key), modes.ECB()).decryptor()
-    pt = dec.update(data) + dec.finalize()
-    pad = pt[-1]
-    if 1 <= pad <= 16 and pt[-pad:] == bytes([pad]) * pad:
-        pt = pt[:-pad]
-    if pt.startswith(SQLITE_MAGIC):
-        return pt
-    if pt[1:17] == SQLITE_MAGIC:
-        return pt[1:]  # strip the version byte used by exports
-    raise ValueError("Not a recognized encrypted export (decryption did not yield SQLite)")
-
-
 def _to_sqlite(data: bytes) -> sqlite3.Connection:
     if not data.startswith(SQLITE_MAGIC):
-        data = _decrypt(data)
+        raise ValueError("Not a SQLite database (only unencrypted .sqlite files are supported)")
     fd, path = tempfile.mkstemp(suffix=".sqlite")
     with os.fdopen(fd, "wb") as f:
         f.write(data)

@@ -41,9 +41,8 @@ export default function ImportPage() {
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Import a legacy database</h2>
         <p className="muted">
-          Upload either a decrypted <code>.sqlite</code> file or an original encrypted export
-          (e.g. <code>&lt;name&gt;_database_&lt;timestamp&gt;.db</code>). Encrypted files are decrypted
-          automatically. Imported tournaments are added as completed history.
+          Upload an unencrypted SQLite <code>.sqlite</code> database (the source app's schema).
+          Imported tournaments are added as completed history. Encrypted exports aren't supported.
         </p>
         <form onSubmit={submit}>
           <input
