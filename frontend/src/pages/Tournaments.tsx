@@ -4,11 +4,14 @@ import { api } from '../api'
 import { FORMAT_LABELS } from '../labels'
 import type { Player, Tournament, TournamentFormat } from '../types'
 
+type SortKey = 'name' | 'format' | 'status' | 'champion' | 'players' | 'date'
+
 export default function Tournaments() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
 
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
@@ -57,16 +60,50 @@ export default function Tournaments() {
     }
   }
 
-  async function remove(t: Tournament) {
-    if (!confirm(`Delete tournament "${t.name}" and all its matches? This cannot be undone.`)) return
-    setError('')
-    try {
-      await api.deleteTournament(t.id)
-      load()
-    } catch (err: any) {
-      setError(err.message)
-    }
+  function toggleSort(key: SortKey) {
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'date' ? 'desc' : 'asc' },
+    )
   }
+
+  const sorted = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    return [...tournaments].sort((a, b) => {
+      let av: number | string
+      let bv: number | string
+      switch (sort.key) {
+        case 'format':
+          av = FORMAT_LABELS[a.format] ?? a.format
+          bv = FORMAT_LABELS[b.format] ?? b.format
+          break
+        case 'status':
+          av = a.status
+          bv = b.status
+          break
+        case 'champion':
+          av = a.champion_id ? championNames.get(a.champion_id) ?? '' : ''
+          bv = b.champion_id ? championNames.get(b.champion_id) ?? '' : ''
+          break
+        case 'players':
+          av = a.players ?? 0
+          bv = b.players ?? 0
+          break
+        case 'date':
+          av = a.start_date ?? a.created_at
+          bv = b.start_date ?? b.created_at
+          break
+        default:
+          av = a.name.toLowerCase()
+          bv = b.name.toLowerCase()
+      }
+      if (av < bv) return -1 * dir
+      if (av > bv) return 1 * dir
+      return 0
+    })
+  }, [tournaments, sort, championNames])
+
+  const arrow = (key: string) =>
+    sort.key === key ? <span className="arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span> : null
 
   return (
     <div>
@@ -158,17 +195,29 @@ export default function Tournaments() {
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Format</th>
-              <th>Status</th>
-              <th>Champion</th>
-              <th className="num">Players</th>
-              <th>Date</th>
+              <th className="sortable" onClick={() => toggleSort('name')}>
+                Name {arrow('name')}
+              </th>
+              <th className="sortable" onClick={() => toggleSort('format')}>
+                Format {arrow('format')}
+              </th>
+              <th className="sortable" onClick={() => toggleSort('status')}>
+                Status {arrow('status')}
+              </th>
+              <th className="sortable" onClick={() => toggleSort('champion')}>
+                Champion {arrow('champion')}
+              </th>
+              <th className="sortable num" onClick={() => toggleSort('players')}>
+                Players {arrow('players')}
+              </th>
+              <th className="sortable" onClick={() => toggleSort('date')}>
+                Date {arrow('date')}
+              </th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {tournaments.map((t) => (
+            {sorted.map((t) => (
               <tr key={t.id}>
                 <td>
                   <Link to={`/t/${t.id}`}>{t.name}</Link>
@@ -186,9 +235,6 @@ export default function Tournaments() {
                     <Link className="btn" to={`/t/${t.id}`}>
                       Open
                     </Link>
-                    <button className="danger" onClick={() => remove(t)}>
-                      Delete
-                    </button>
                   </div>
                 </td>
               </tr>

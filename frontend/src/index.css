@@ -345,6 +345,20 @@ th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.leader td { background: color-mix(in srgb, var(--amber) 12%, transparent); }
 tr.leader td:first-child { border-left: 3px solid var(--amber); }
 
+/* Sortable column headers */
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--chalk); }
+th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
+
+/* Friendlies: scoreboard-style alignment */
+.friendly-table th.home,
+.friendly-table td.home { text-align: right; }
+.friendly-table th.score,
+.friendly-table td.score { text-align: center; }
+.friendly-table th.away,
+.friendly-table td.away { text-align: left; }
+.friendly-table td.score { font-weight: 650; font-variant-numeric: tabular-nums; }
+
 /* ---- Badges ---- */
 .badge {
   display: inline-flex;

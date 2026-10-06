@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { Player } from '../types'
@@ -7,6 +7,10 @@ export default function Players() {
   const [players, setPlayers] = useState<Player[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [sort, setSort] = useState<{ key: 'name' | 'rating' | 'tournaments'; dir: 'asc' | 'desc' }>({
+    key: 'name',
+    dir: 'asc',
+  })
 
   const load = () => api.players().then(setPlayers).catch((e) => setError(e.message))
 
@@ -36,6 +40,34 @@ export default function Players() {
     }
   }
 
+  function toggleSort(key: 'name' | 'rating' | 'tournaments') {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  }
+
+  const sorted = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    return [...players].sort((a, b) => {
+      let av: number | string
+      let bv: number | string
+      if (sort.key === 'name') {
+        av = a.name.toLowerCase()
+        bv = b.name.toLowerCase()
+      } else if (sort.key === 'rating') {
+        av = a.rating
+        bv = b.rating
+      } else {
+        av = a.tournaments ?? 0
+        bv = b.tournaments ?? 0
+      }
+      if (av < bv) return -1 * dir
+      if (av > bv) return 1 * dir
+      return 0
+    })
+  }, [players, sort])
+
+  const arrow = (key: string) =>
+    sort.key === key ? <span className="arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span> : null
+
   return (
     <div>
       <h1>Players</h1>
@@ -55,14 +87,20 @@ export default function Players() {
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th style={{ width: 90 }}>Rating</th>
-              <th style={{ width: 130 }}>Tournaments</th>
+              <th className="sortable" onClick={() => toggleSort('name')}>
+                Name {arrow('name')}
+              </th>
+              <th className="sortable" style={{ width: 90 }} onClick={() => toggleSort('rating')}>
+                Rating {arrow('rating')}
+              </th>
+              <th className="sortable" style={{ width: 130 }} onClick={() => toggleSort('tournaments')}>
+                Tournaments {arrow('tournaments')}
+              </th>
               <th style={{ width: 90 }}></th>
             </tr>
           </thead>
           <tbody>
-            {players.map((p) => (
+            {sorted.map((p) => (
               <tr key={p.id}>
                 <td>
                   <Link to={`/players/${p.id}`}>{p.name}</Link>

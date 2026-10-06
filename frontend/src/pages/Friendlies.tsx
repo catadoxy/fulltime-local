@@ -141,13 +141,13 @@ export default function Friendlies() {
       </form>
 
       <div className="panel">
-        <table>
+        <table className="friendly-table">
           <thead>
             <tr>
               <th style={{ width: 120 }}>Date</th>
-              <th className="team away">Home</th>
-              <th style={{ width: 80, textAlign: 'center' }}>Score</th>
-              <th className="team">Away</th>
+              <th className="home">Home</th>
+              <th className="score" style={{ width: 90 }}>Score</th>
+              <th className="away">Away</th>
               <th>Note</th>
               <th style={{ width: 90 }}></th>
             </tr>
@@ -159,11 +159,11 @@ export default function Friendlies() {
               return (
                 <tr key={g.id}>
                   <td className="muted small">{g.played_at}</td>
-                  <td className={`team away ${homeWin ? 'won' : ''}`}>{g.home_name}</td>
-                  <td className="score" style={{ textAlign: 'center' }}>
-                    {g.home_score} - {g.away_score}
+                  <td className={`home ${homeWin ? 'won' : ''}`}>{g.home_name}</td>
+                  <td className="score">
+                    {g.home_score}–{g.away_score}
                   </td>
-                  <td className={`team ${awayWin ? 'won' : ''}`}>{g.away_name}</td>
+                  <td className={`away ${awayWin ? 'won' : ''}`}>{g.away_name}</td>
                   <td className="muted small">{g.note || '—'}</td>
                   <td>
                     <button className="danger" onClick={() => remove(g)}>
