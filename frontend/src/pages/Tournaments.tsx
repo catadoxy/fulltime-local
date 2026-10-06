@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { ErrorBanner, SearchInput, SortableTh, formatDate } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
-import type { Player, Tournament, TournamentFormat } from '../types'
+import type { Player, Tournament, TournamentFormat, TournamentSettings } from '../types'
 
 type SortKey = 'name' | 'format' | 'status' | 'champion' | 'players' | 'date'
 
@@ -10,8 +11,12 @@ export default function Tournaments() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all')
+  const [formatFilter, setFormatFilter] = useState<'all' | TournamentFormat>('all')
 
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
@@ -19,15 +24,29 @@ export default function Tournaments() {
   const [format, setFormat] = useState<TournamentFormat>('league')
   const [nbPitches, setNbPitches] = useState(1)
   const [selected, setSelected] = useState<number[]>([])
-  const [settings, setSettings] = useState<Record<string, any>>({})
+  const [settings, setSettings] = useState<TournamentSettings>({})
+  const [submitting, setSubmitting] = useState(false)
 
   const navigate = useNavigate()
 
-  const load = () => {
-    api.tournaments().then(setTournaments).catch((e) => setError(e.message))
-    api.players().then(setPlayers).catch(() => {})
-  }
-  useEffect(load, [])
+  useEffect(() => {
+    const ctrl = new AbortController()
+    setLoading(true)
+    Promise.all([api.tournaments(undefined, ctrl.signal), api.players(undefined, ctrl.signal)])
+      .then(([ts, ps]) => {
+        if (!ctrl.signal.aborted) {
+          setTournaments(ts)
+          setPlayers(ps)
+        }
+      })
+      .catch((e) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false)
+      })
+    return () => ctrl.abort()
+  }, [])
 
   const championNames = useMemo(() => {
     const map = new Map<number, string>()
@@ -44,6 +63,7 @@ export default function Tournaments() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setSubmitting(true)
     try {
       const t = await api.createTournament({
         name,
@@ -55,20 +75,37 @@ export default function Tournaments() {
         settings,
       })
       navigate(`/t/${t.id}`)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  function toggleSort(key: SortKey) {
+  function toggleSort(key: string) {
     setSort((s) =>
-      s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'date' ? 'desc' : 'asc' },
+      s.key === key
+        ? { key: key as SortKey, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+        : { key: key as SortKey, dir: key === 'date' ? 'desc' : 'asc' },
     )
   }
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return tournaments.filter((t) => {
+      if (statusFilter !== 'all' && t.status !== statusFilter) return false
+      if (formatFilter !== 'all' && t.format !== formatFilter) return false
+      if (!q) return true
+      return (
+        t.name.toLowerCase().includes(q) ||
+        (t.note ?? '').toLowerCase().includes(q)
+      )
+    })
+  }, [tournaments, query, statusFilter, formatFilter])
+
   const sorted = useMemo(() => {
     const dir = sort.dir === 'asc' ? 1 : -1
-    return [...tournaments].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let av: number | string
       let bv: number | string
       switch (sort.key) {
@@ -100,10 +137,7 @@ export default function Tournaments() {
       if (av > bv) return 1 * dir
       return 0
     })
-  }, [tournaments, sort, championNames])
-
-  const arrow = (key: string) =>
-    sort.key === key ? <span className="arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span> : null
+  }, [filtered, sort, championNames])
 
   return (
     <div>
@@ -118,12 +152,26 @@ export default function Tournaments() {
         <form className="panel" onSubmit={submit}>
           <div className="row">
             <div className="grow">
-              <label>Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} required style={{ width: '100%' }} />
+              <label htmlFor="t-name">Name</label>
+              <input
+                id="t-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="full"
+              />
             </div>
             <div className="grow">
-              <label>Format</label>
-              <select value={format} onChange={(e) => { setFormat(e.target.value as TournamentFormat); setSettings({}) }} style={{ width: '100%' }}>
+              <label htmlFor="t-format">Format</label>
+              <select
+                id="t-format"
+                value={format}
+                onChange={(e) => {
+                  setFormat(e.target.value as TournamentFormat)
+                  setSettings({})
+                }}
+                className="full"
+              >
                 {Object.entries(FORMAT_LABELS).map(([id, label]) => (
                   <option key={id} value={id}>
                     {label}
@@ -132,8 +180,16 @@ export default function Tournaments() {
               </select>
             </div>
             <div>
-              <label>Pitches / TVs</label>
-              <input type="number" min={1} value={nbPitches} onChange={(e) => setNbPitches(Number(e.target.value))} style={{ width: 90 }} />
+              <label htmlFor="t-pitches">Pitches / TVs</label>
+              <input
+                id="t-pitches"
+                type="number"
+                min={1}
+                max={64}
+                value={nbPitches}
+                onChange={(e) => setNbPitches(Number(e.target.value))}
+                className="num-input"
+              />
             </div>
           </div>
 
@@ -145,7 +201,7 @@ export default function Tournaments() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. FIFA 24, Rocket League"
-                style={{ width: '100%' }}
+                className="full"
               />
             </div>
             <div>
@@ -172,6 +228,7 @@ export default function Tournaments() {
                   key={p.id}
                   className={`player-pick ${idx >= 0 ? 'selected' : ''}`}
                   onClick={() => toggle(p.id)}
+                  aria-pressed={idx >= 0}
                 >
                   <span className="badge">{idx >= 0 ? `#${idx + 1}` : '—'}</span>
                   <span>{p.name}</span>
@@ -182,37 +239,59 @@ export default function Tournaments() {
           </div>
 
           <div className="row" style={{ marginTop: '1rem' }}>
-            <button className="primary" type="submit" disabled={selected.length < 2}>
-              Create tournament
+            <button className="primary" type="submit" disabled={selected.length < 2 || submitting}>
+              {submitting ? 'Creating…' : 'Create tournament'}
             </button>
             {selected.length < 2 && <span className="muted small">Select at least 2 players.</span>}
           </div>
-          {error && <div className="error">{error}</div>}
         </form>
       )}
 
+      <ErrorBanner message={error} />
+
       <div className="panel">
+        <div className="toolbar">
+          <SearchInput value={query} onChange={setQuery} label="tournaments" placeholder="Search name or game…" />
+          <div>
+            <label htmlFor="flt-status">Status</label>
+            <select
+              id="flt-status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            >
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="flt-format">Format</label>
+            <select
+              id="flt-format"
+              value={formatFilter}
+              onChange={(e) => setFormatFilter(e.target.value as typeof formatFilter)}
+            >
+              <option value="all">All formats</option>
+              {Object.entries(FORMAT_LABELS).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="muted small" aria-live="polite">
+            {sorted.length} of {tournaments.length}
+          </span>
+        </div>
         <table>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => toggleSort('name')}>
-                Name {arrow('name')}
-              </th>
-              <th className="sortable" onClick={() => toggleSort('format')}>
-                Format {arrow('format')}
-              </th>
-              <th className="sortable" onClick={() => toggleSort('status')}>
-                Status {arrow('status')}
-              </th>
-              <th className="sortable" onClick={() => toggleSort('champion')}>
-                Champion {arrow('champion')}
-              </th>
-              <th className="sortable num" onClick={() => toggleSort('players')}>
-                Players {arrow('players')}
-              </th>
-              <th className="sortable" onClick={() => toggleSort('date')}>
-                Date {arrow('date')}
-              </th>
+              <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+              <SortableTh label="Format" sortKey="format" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+              <SortableTh label="Status" sortKey="status" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+              <SortableTh label="Champion" sortKey="champion" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+              <SortableTh label="Players" sortKey="players" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} numeric />
+              <SortableTh label="Date" sortKey="date" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
               <th></th>
             </tr>
           </thead>
@@ -239,28 +318,20 @@ export default function Tournaments() {
                 </td>
               </tr>
             ))}
-            {tournaments.length === 0 && (
-              <tr>
-                <td colSpan={7} className="muted">
-                  No tournaments yet.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+        {loading ? (
+          <p className="muted">Loading…</p>
+        ) : (
+          sorted.length === 0 && (
+            <div className="empty-state">
+              {tournaments.length === 0 ? 'No tournaments yet. Create one above.' : 'No tournaments match these filters.'}
+            </div>
+          )
+        )}
       </div>
     </div>
   )
-}
-
-function formatDate(value: string): string {
-  if (!value) return '—'
-  const dateOnly = value.length === 10
-  const hasTz = /[zZ]|[+-]\d\d:\d\d$/.test(value)
-  const iso = dateOnly || hasTz ? value : `${value}Z` // timestamps are stored in UTC
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function FormatSettings({
@@ -269,10 +340,11 @@ function FormatSettings({
   setSettings,
 }: {
   format: TournamentFormat
-  settings: Record<string, any>
-  setSettings: (s: Record<string, any>) => void
+  settings: TournamentSettings
+  setSettings: (s: TournamentSettings) => void
 }) {
-  const set = (key: string, value: any) => setSettings({ ...settings, [key]: value })
+  const set = (key: string, value: number | boolean | undefined) =>
+    setSettings({ ...settings, [key]: value })
 
   const numberField = (key: string, label: string, min = 1, max = 64) => (
     <div>
@@ -281,16 +353,20 @@ function FormatSettings({
         type="number"
         min={min}
         max={max}
-        value={settings[key] ?? ''}
+        value={(settings[key] as number) ?? ''}
         onChange={(e) => set(key, e.target.value === '' ? undefined : Number(e.target.value))}
-        style={{ width: 110 }}
+        className="num-input"
       />
     </div>
   )
 
   const checkbox = (key: string, label: string) => (
     <label className="row" style={{ color: 'var(--text)', marginTop: '1.4rem' }}>
-      <input type="checkbox" checked={!!settings[key]} onChange={(e) => set(key, e.target.checked)} />
+      <input
+        type="checkbox"
+        checked={Boolean(settings[key])}
+        onChange={(e) => set(key, e.target.checked)}
+      />
       {label}
     </label>
   )

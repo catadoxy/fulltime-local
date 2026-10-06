@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { ConfirmDialog, EmptyState, ErrorBanner } from '../components/ui'
 import type { Game, Player } from '../types'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -16,46 +17,72 @@ export default function Friendlies() {
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [pendingDelete, setPendingDelete] = useState<Game | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  const load = () => {
-    api.games().then(setGames).catch((e) => setError(e.message))
-    api.players().then(setPlayers).catch(() => {})
+  const load = async (signal?: AbortSignal) => {
+    setLoading(true)
+    try {
+      const [gs, ps] = await Promise.all([
+        api.games({ limit: 500 }, signal),
+        api.players({ limit: 500 }, signal),
+      ])
+      if (!signal?.aborted) {
+        setGames(gs)
+        setPlayers(ps)
+      }
+    } catch (e) {
+      if (!signal?.aborted) setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      if (!signal?.aborted) setLoading(false)
+    }
   }
-  useEffect(load, [])
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    void load(ctrl.signal)
+    return () => ctrl.abort()
+  }, [])
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (!homeId || !awayId) return setError('Pick both players')
     if (homeId === awayId) return setError('Pick two different players')
+    if (homeScore === '' || awayScore === '') return setError('Enter both scores')
     setBusy(true)
     try {
       await api.createGame({
         home_id: Number(homeId),
         away_id: Number(awayId),
-        home_score: Number(homeScore || 0),
-        away_score: Number(awayScore || 0),
+        home_score: Number(homeScore),
+        away_score: Number(awayScore),
         played_at: playedAt,
-        note: note || null,
+        note: note.trim() || null,
       })
       setHomeScore('')
       setAwayScore('')
       setNote('')
-      load()
-    } catch (err: any) {
-      setError(err.message)
+      void load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setBusy(false)
     }
   }
 
-  async function remove(g: Game) {
-    if (!confirm(`Delete ${g.home_name} ${g.home_score}-${g.away_score} ${g.away_name}?`)) return
+  async function confirmRemove() {
+    if (!pendingDelete) return
+    setDeleting(true)
     try {
-      await api.deleteGame(g.id)
-      load()
-    } catch (err: any) {
-      setError(err.message)
+      await api.deleteGame(pendingDelete.id)
+      setPendingDelete(null)
+      void load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -72,7 +99,8 @@ export default function Friendlies() {
       <form className="panel" onSubmit={add}>
         <div className="row" style={{ alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div>
-            <label>Home</label>            <select value={homeId} onChange={(e) => setHomeId(e.target.value)}>
+            <label htmlFor="fr-home">Home</label>
+            <select id="fr-home" value={homeId} onChange={(e) => setHomeId(e.target.value)}>
               <option value="">—</option>
               {players.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -86,31 +114,31 @@ export default function Friendlies() {
             <div className="row" style={{ gap: '0.35rem' }}>
               <input
                 id="game-home-score"
-                className="no-spin"
+                className="no-spin score-narrow"
                 type="number"
                 inputMode="numeric"
                 min={0}
+                max={999}
                 aria-label="Home score"
-                style={{ width: 64, textAlign: 'center' }}
                 value={homeScore}
                 onChange={(e) => setHomeScore(e.target.value)}
               />
               <span className="muted">-</span>
               <input
-                className="no-spin"
+                className="no-spin score-narrow"
                 type="number"
                 inputMode="numeric"
                 min={0}
+                max={999}
                 aria-label="Away score"
-                style={{ width: 64, textAlign: 'center' }}
                 value={awayScore}
                 onChange={(e) => setAwayScore(e.target.value)}
               />
             </div>
           </div>
           <div>
-            <label>Away</label>
-            <select value={awayId} onChange={(e) => setAwayId(e.target.value)}>
+            <label htmlFor="fr-away">Away</label>
+            <select id="fr-away" value={awayId} onChange={(e) => setAwayId(e.target.value)}>
               <option value="">—</option>
               {players.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -120,25 +148,27 @@ export default function Friendlies() {
             </select>
           </div>
           <div>
-            <label>Date</label>
-            <input type="date" value={playedAt} onChange={(e) => setPlayedAt(e.target.value)} />
+            <label htmlFor="fr-date">Date</label>
+            <input id="fr-date" type="date" value={playedAt} onChange={(e) => setPlayedAt(e.target.value)} />
           </div>
           <div className="grow">
-            <label>Note (optional)</label>
+            <label htmlFor="fr-note">Note (optional)</label>
             <input
-              style={{ width: '100%' }}
+              id="fr-note"
+              className="full"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Rocket League, best of 3"
+              maxLength={500}
             />
           </div>
           <button className="primary" type="submit" disabled={busy}>
-            Add friendly
+            {busy ? 'Adding…' : 'Add friendly'}
           </button>
         </div>
         {players.length < 2 && <div className="muted small">Add at least two players first.</div>}
-        {error && <div className="error">{error}</div>}
       </form>
+      <ErrorBanner message={error} onRetry={() => load()} />
 
       <div className="panel">
         <table className="friendly-table">
@@ -146,7 +176,9 @@ export default function Friendlies() {
             <tr>
               <th style={{ width: 120 }}>Date</th>
               <th className="home">Home</th>
-              <th className="score" style={{ width: 90 }}>Score</th>
+              <th className="score" style={{ width: 90 }}>
+                Score
+              </th>
               <th className="away">Away</th>
               <th>Note</th>
               <th style={{ width: 90 }}></th>
@@ -166,28 +198,35 @@ export default function Friendlies() {
                   <td className={`away ${awayWin ? 'won' : ''}`}>{g.away_name}</td>
                   <td className="muted small">{g.note || '—'}</td>
                   <td>
-                    <button className="danger" onClick={() => remove(g)}>
+                    <button className="danger" onClick={() => setPendingDelete(g)}>
                       Delete
                     </button>
                   </td>
                 </tr>
               )
             })}
-            {games.length === 0 && (
-              <tr>
-                <td colSpan={6} className="muted">
-                  No games recorded yet.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+        {loading ? (
+          <p className="muted">Loading…</p>
+        ) : (
+          games.length === 0 && <EmptyState>No games recorded yet.</EmptyState>
+        )}
       </div>
 
       <div className="muted small">
         Tip: a player's full record (tournaments + friendlies) is on their{' '}
         <Link to="/players">profile</Link>.
       </div>
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete friendly"
+          message={`Delete ${pendingDelete.home_name} ${pendingDelete.home_score}-${pendingDelete.away_score} ${pendingDelete.away_name}?`}
+          onConfirm={confirmRemove}
+          onCancel={() => setPendingDelete(null)}
+          busy={deleting}
+        />
+      )}
     </div>
   )
 }

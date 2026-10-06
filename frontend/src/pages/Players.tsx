@@ -1,21 +1,39 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { ConfirmDialog, EmptyState, ErrorBanner, SearchInput, SortableTh } from '../components/ui'
 import type { Player } from '../types'
 
 export default function Players() {
   const [players, setPlayers] = useState<Player[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Player | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [sort, setSort] = useState<{ key: 'name' | 'rating' | 'tournaments'; dir: 'asc' | 'desc' }>({
     key: 'name',
     dir: 'asc',
   })
 
-  const load = () => api.players().then(setPlayers).catch((e) => setError(e.message))
+  const load = async (signal?: AbortSignal) => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await api.players({ limit: 500 }, signal)
+      if (!signal?.aborted) setPlayers(data)
+    } catch (e) {
+      if (!signal?.aborted) setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      if (!signal?.aborted) setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    load()
+    const ctrl = new AbortController()
+    void load(ctrl.signal)
+    return () => ctrl.abort()
   }, [])
 
   async function add(e: React.FormEvent) {
@@ -24,29 +42,45 @@ export default function Players() {
     try {
       await api.createPlayer({ name: name.trim() })
       setName('')
-      load()
-    } catch (err: any) {
-      setError(err.message)
+      void load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     }
   }
 
-  async function remove(p: Player) {
-    if (!confirm(`Delete player "${p.name}"?`)) return
+  async function confirmRemove() {
+    if (!pendingDelete) return
+    setDeleting(true)
     try {
-      await api.deletePlayer(p.id)
-      load()
-    } catch (err: any) {
-      setError(err.message)
+      await api.deletePlayer(pendingDelete.id)
+      setPendingDelete(null)
+      void load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDeleting(false)
     }
   }
 
-  function toggleSort(key: 'name' | 'rating' | 'tournaments') {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  function toggleSort(key: string) {
+    setSort((s) =>
+      s.key === key
+        ? { key: key as typeof s.key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+        : { key: key as typeof s.key, dir: 'asc' },
+    )
   }
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return players
+    return players.filter(
+      (p) => p.name.toLowerCase().includes(q) || (p.real_name ?? '').toLowerCase().includes(q),
+    )
+  }, [players, query])
 
   const sorted = useMemo(() => {
     const dir = sort.dir === 'asc' ? 1 : -1
-    return [...players].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let av: number | string
       let bv: number | string
       if (sort.key === 'name') {
@@ -63,10 +97,7 @@ export default function Players() {
       if (av > bv) return 1 * dir
       return 0
     })
-  }, [players, sort])
-
-  const arrow = (key: string) =>
-    sort.key === key ? <span className="arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span> : null
+  }, [filtered, sort])
 
   return (
     <div>
@@ -74,28 +105,42 @@ export default function Players() {
 
       <form className="panel row" onSubmit={add}>
         <div className="grow">
-          <label>Name</label>
-          <input className="grow" style={{ width: '100%' }} value={name} onChange={(e) => setName(e.target.value)} required />
+          <label htmlFor="player-name">Name</label>
+          <input
+            id="player-name"
+            className="full"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            maxLength={120}
+          />
         </div>
         <button className="primary" type="submit" style={{ alignSelf: 'flex-end' }}>
           Add player
         </button>
       </form>
-      {error && <div className="error">{error}</div>}
+      <ErrorBanner message={error} onRetry={() => load()} />
 
       <div className="panel">
+        <div className="toolbar">
+          <SearchInput value={query} onChange={setQuery} label="players" placeholder="Search players…" />
+          <span className="muted small" aria-live="polite">
+            {sorted.length} of {players.length}
+          </span>
+        </div>
         <table>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => toggleSort('name')}>
-                Name {arrow('name')}
-              </th>
-              <th className="sortable" style={{ width: 90 }} onClick={() => toggleSort('rating')}>
-                Rating {arrow('rating')}
-              </th>
-              <th className="sortable" style={{ width: 130 }} onClick={() => toggleSort('tournaments')}>
-                Tournaments {arrow('tournaments')}
-              </th>
+              <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+              <SortableTh label="Rating" sortKey="rating" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} numeric />
+              <SortableTh
+                label="Tournaments"
+                sortKey="tournaments"
+                activeKey={sort.key}
+                dir={sort.dir}
+                onToggle={toggleSort}
+                numeric
+              />
               <th style={{ width: 90 }}></th>
             </tr>
           </thead>
@@ -120,22 +165,35 @@ export default function Players() {
                   )}
                 </td>
                 <td>
-                  <button className="danger" onClick={() => remove(p)}>
+                  <button className="danger" onClick={() => setPendingDelete(p)}>
                     Delete
                   </button>
                 </td>
               </tr>
             ))}
-            {players.length === 0 && (
-              <tr>
-                <td colSpan={4} className="muted">
-                  No players yet. Add some above, or import a legacy database.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+        {loading ? (
+          <p className="muted">Loading…</p>
+        ) : (
+          sorted.length === 0 && (
+            <EmptyState>
+              {players.length === 0
+                ? 'No players yet. Add some above, or import a legacy database.'
+                : 'No players match this search.'}
+            </EmptyState>
+          )
+        )}
       </div>
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete player"
+          message={`Delete player "${pendingDelete.name}"? Only possible when they are not in any tournament.`}
+          onConfirm={confirmRemove}
+          onCancel={() => setPendingDelete(null)}
+          busy={deleting}
+        />
+      )}
     </div>
   )
 }

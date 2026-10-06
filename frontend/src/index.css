@@ -518,9 +518,45 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .bracket-match { grid-template-columns: minmax(0, 1fr) 60px minmax(0, 1fr); }
 
 /* ---- Bracket ---- */
-.bracket { display: grid; gap: 0.75rem; padding-bottom: 1rem; }
+.bracket-scroll { overflow-x: auto; padding-bottom: 1rem; }
+.bracket { display: grid; gap: 0.75rem; padding-bottom: 1rem; min-width: 560px; }
 .bracket-col { min-width: 0; }
 .bracket-round { display: flex; flex-direction: column; gap: 1rem; justify-content: space-around; height: 100%; }
+
+/* ---- New UI primitives ---- */
+.error-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.7rem 0.9rem; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 55%, var(--line));
+  color: var(--chalk); margin-bottom: 1rem;
+}
+.empty-state { padding: 1.25rem; text-align: center; border: 1px dashed var(--line-strong); border-radius: var(--radius); }
+.skeleton-block { height: 14px; border-radius: 6px; background: var(--surface-3); margin: 0.55rem 0; }
+.toolbar { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.toolbar .search-field { min-width: 200px; flex: 1; }
+.search-field input[type="search"] { width: 100%; }
+.th-button { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.th-button:hover { color: var(--chalk); }
+.form-grid { display: grid; gap: 0.75rem; }
+.form-grid.two { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.full { width: 100%; }
+.num-input { width: 110px; }
+.score-narrow { width: 64px; text-align: center; }
+.pen-input { width: 52px; }
+.edit-grid { display: grid; gap: 0.55rem; max-width: 560px; }
+.dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: grid; place-items: center; z-index: 50; padding: 1rem; }
+.dialog { width: min(440px, 100%); margin: 0; }
+
+/* Friendly cards on narrow screens */
+@media (max-width: 720px) {
+  .friendly-table thead { display: none; }
+  .friendly-table tr { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 0.75rem; padding: 0.6rem 0; }
+  .friendly-table td { border: none; padding: 0.15rem 0; }
+  .match { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
+  .match-gutter, .match-actions { grid-column: 1 / -1; }
+  .match-gutter { display: none; }
+}
 
 /* ---- Motion ---- */
 @media (prefers-reduced-motion: reduce) {

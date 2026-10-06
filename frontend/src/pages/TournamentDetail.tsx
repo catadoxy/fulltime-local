@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
+import { ConfirmDialog, ErrorBanner, LoadingSkeleton } from '../components/ui'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
 const KNOCKOUT_ORDER = ['r64', 'r32', 'r16', 'qf', 'sf', 'third', 'final']
@@ -28,29 +29,41 @@ export default function TournamentDetail() {
   const [matches, setMatches] = useState<Match[]>([])
   const [tables, setTables] = useState<Table[]>([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [noteDraft, setNoteDraft] = useState('')
   const [dateDraft, setDateDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const load = async () => {
+  const load = async (signal?: AbortSignal) => {
     try {
       const [detail, ms, st] = await Promise.all([
-        api.tournament(tid),
-        api.matches(tid),
-        api.standings(tid),
+        api.tournament(tid, signal),
+        api.matches(tid, signal),
+        api.standings(tid, signal),
       ])
+      if (signal?.aborted) return
       setT(detail)
       setMatches(ms)
       setTables(st.tables)
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e) {
+      if (!signal?.aborted) setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      if (!signal?.aborted) setLoading(false)
     }
   }
 
   useEffect(() => {
-    load()
+    setLoading(true)
+    setError('')
+    const ctrl = new AbortController()
+    void load(ctrl.signal)
+    return () => ctrl.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tid])
 
   const playerNames = useMemo(() => {
@@ -77,12 +90,15 @@ export default function TournamentDetail() {
 
   async function removeTournament() {
     if (!t) return
-    if (!confirm(`Delete tournament "${t.name}" and all its matches? This cannot be undone.`)) return
+    setBusy(true)
     try {
       await api.deleteTournament(t.id)
       navigate('/tournaments')
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+      setConfirmDelete(false)
     }
   }
 
@@ -99,9 +115,9 @@ export default function TournamentDetail() {
         start_date: dateDraft || null,
       })
       setEditing(false)
-      load()
-    } catch (e: any) {
-      setError(e.message)
+      void load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setSaving(false)
     }
@@ -109,17 +125,19 @@ export default function TournamentDetail() {
 
   async function closeTournament() {
     if (!t) return
-    const msg = allPlayed
-      ? `Close "${t.name}"? It will be marked as completed.`
-      : `"${t.name}" still has unplayed matches. Close it anyway?`
-    if (!confirm(msg)) return
+    setBusy(true)
     try {
       await api.closeTournament(t.id)
-      load()
-    } catch (e: any) {
-      setError(e.message)
+      setConfirmClose(false)
+      void load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
     }
   }
+
+  if (loading && !t) return <LoadingSkeleton rows={6} label="Loading tournament…" />
 
   if (!t) return <div className="panel">{error || 'Loading…'}</div>
 
@@ -128,7 +146,7 @@ export default function TournamentDetail() {
       <div className="row between page-head">
         <div className="grow">
           {editing ? (
-            <div style={{ display: 'grid', gap: '0.55rem', maxWidth: 560 }}>
+            <div className="edit-grid">
               <div>
                 <label htmlFor="t-name">Name</label>
                 <input
@@ -137,7 +155,7 @@ export default function TournamentDetail() {
                   autoFocus
                   onChange={(e) => setNameDraft(e.target.value)}
                   onKeyDown={(e) => e.key === 'Escape' && setEditing(false)}
-                  style={{ width: '100%', fontSize: '1.1rem', fontWeight: 700 }}
+                  className="full"
                 />
               </div>
               <div>
@@ -148,10 +166,10 @@ export default function TournamentDetail() {
                   placeholder="e.g. FIFA 24, Rocket League"
                   onChange={(e) => setNoteDraft(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveDetails()
+                    if (e.key === 'Enter') void saveDetails()
                     if (e.key === 'Escape') setEditing(false)
                   }}
-                  style={{ width: '100%' }}
+                  className="full"
                 />
               </div>
               <div>
@@ -164,7 +182,7 @@ export default function TournamentDetail() {
                 />
               </div>
               <div className="row">
-                <button className="primary" disabled={saving} onClick={saveDetails}>
+                <button className="primary" disabled={saving} onClick={() => void saveDetails()}>
                   Save
                 </button>
                 <button onClick={() => setEditing(false)}>Cancel</button>
@@ -203,11 +221,15 @@ export default function TournamentDetail() {
         </div>
         <div className="row">
           {t.status === 'active' && (
-            <button className="primary" title="Mark this tournament as completed" onClick={closeTournament}>
+            <button
+              className="primary"
+              title="Mark this tournament as completed"
+              onClick={() => setConfirmClose(true)}
+            >
               Close tournament
             </button>
           )}
-          <button className="danger" onClick={removeTournament}>
+          <button className="danger" onClick={() => setConfirmDelete(true)}>
             Delete
           </button>
           <Link className="btn" to="/tournaments">
@@ -215,7 +237,30 @@ export default function TournamentDetail() {
           </Link>
         </div>
       </div>
-      {error && <div className="error">{error}</div>}
+      <ErrorBanner message={error} onRetry={() => load()} />
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete tournament"
+          message={`Delete tournament "${t.name}" and all its matches? This cannot be undone.`}
+          onConfirm={() => void removeTournament()}
+          onCancel={() => setConfirmDelete(false)}
+          busy={busy}
+        />
+      )}
+      {confirmClose && (
+        <ConfirmDialog
+          title="Close tournament"
+          message={
+            allPlayed
+              ? `Close "${t.name}"? It will be marked as completed.`
+              : `"${t.name}" still has unplayed matches. Close it anyway?`
+          }
+          confirmLabel="Close"
+          onConfirm={() => void closeTournament()}
+          onCancel={() => setConfirmClose(false)}
+          busy={busy}
+        />
+      )}
 
       {hasTables && (
         <div className="panel">
@@ -406,8 +451,21 @@ function MatchRow({
         away_pen: ap === '' ? null : Number(ap),
       })
       onChange()
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function clear() {
+    setBusy(true)
+    setError('')
+    try {
+      await api.clearResult(tid, match.id)
+      onChange()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
     }
@@ -454,8 +512,13 @@ function MatchRow({
         </div>
         <div className="match-actions">
           {canSave && (
-            <button className="primary" disabled={busy} onClick={save}>
+            <button className="primary" disabled={busy} onClick={() => void save()}>
               Save
+            </button>
+          )}
+          {match.played && !dirty && (
+            <button className="danger" disabled={busy} onClick={() => void clear()} title="Clear this result (downstream matches are cleared too)">
+              Clear
             </button>
           )}
         </div>
@@ -463,12 +526,12 @@ function MatchRow({
       {ready && knockout && tied && (
         <div className="row small muted" style={{ margin: '0 0 0.4rem 0.6rem' }}>
           Penalties:
-          <input className="no-spin" type="number" inputMode="numeric" min={0} aria-label="Home penalties" style={{ width: 52 }} value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />
+          <input className="no-spin pen-input" type="number" inputMode="numeric" min={0} aria-label="Home penalties" value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />
           <span>-</span>
-          <input className="no-spin" type="number" inputMode="numeric" min={0} aria-label="Away penalties" style={{ width: 52 }} value={ap} disabled={busy} onChange={(e) => setAp(e.target.value)} />
+          <input className="no-spin pen-input" type="number" inputMode="numeric" min={0} aria-label="Away penalties" value={ap} disabled={busy} onChange={(e) => setAp(e.target.value)} />
         </div>
       )}
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
     </div>
   )
 }
@@ -489,9 +552,10 @@ function Bracket({ matches }: { matches: Match[] }) {
   const stages = KNOCKOUT_ORDER.filter((s) => byStage.has(s))
 
   return (
+    <div className="bracket-scroll">
     <div
       className="bracket"
-      style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(180px, 1fr))` }}
     >
       {stages.map((stage) => (
         <div className="bracket-col" key={stage}>
@@ -522,6 +586,7 @@ function Bracket({ matches }: { matches: Match[] }) {
           </div>
         </div>
       ))}
+    </div>
     </div>
   )
 }

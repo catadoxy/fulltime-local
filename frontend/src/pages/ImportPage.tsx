@@ -1,32 +1,53 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { ConfirmDialog, ErrorBanner } from '../components/ui'
+
+interface ImportResult {
+  tournaments: number
+  matches: number
+  players: number
+  duplicates?: number
+  skipped?: number
+  replaced?: boolean
+}
 
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null)
   const [replace, setReplace] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState('')
+  const [confirmReplace, setConfirmReplace] = useState(false)
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
+  async function doImport() {
     if (!file) return
-    if (
-      replace &&
-      !confirm('Replace ALL current data (players, tournaments, matches, friendlies) with this file? This cannot be undone.')
-    )
-      return
     setBusy(true)
     setError('')
     setResult(null)
     try {
-      setResult(await api.importLegacy(file, replace))
-    } catch (err: any) {
-      setError(err.message)
+      const r = (await api.importLegacy(file, replace)) as ImportResult
+      setResult(r)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setBusy(false)
+      setConfirmReplace(false)
     }
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!file) return
+    if (file.size > 100 * 1024 * 1024) {
+      setError('File is too large (max 100 MB).')
+      return
+    }
+    if (replace) {
+      setConfirmReplace(true)
+      return
+    }
+    void doImport()
   }
 
   return (
@@ -39,7 +60,7 @@ export default function ImportPage() {
           Download a full, portable backup of this app's database (all players and tournaments).
           Keep it somewhere safe — to restore, drop it into <code>./data/fulltime.db</code>.
         </p>
-        <a className="btn primary" href={`${import.meta.env.VITE_API_URL ?? ''}/api/export/backup`}>
+        <a className="btn primary" href={api.exportBackupUrl()}>
           ⬇ Download backup (.db)
         </a>
       </div>
@@ -56,7 +77,12 @@ export default function ImportPage() {
             <input
               type="file"
               accept=".db,.sqlite,.sqlite3,application/octet-stream"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              aria-label="Legacy SQLite file"
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null)
+                setResult(null)
+                setError('')
+              }}
             />
             <button className="primary" type="submit" disabled={!file || busy}>
               {busy ? 'Importing…' : 'Import'}
@@ -66,8 +92,13 @@ export default function ImportPage() {
             <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
             Replace all existing data (clean slate)
           </label>
+          {file && (
+            <p className="muted small">
+              Selected: {file.name} ({Math.round(file.size / 1024)} KB)
+            </p>
+          )}
         </form>
-        {error && <div className="error">{error}</div>}
+        <ErrorBanner message={error} />
         {result && (
           <div className="banner" style={{ marginTop: '1rem' }}>
             {result.replaced ? 'Replaced everything. ' : ''}
@@ -79,6 +110,16 @@ export default function ImportPage() {
           </div>
         )}
       </div>
+      {confirmReplace && (
+        <ConfirmDialog
+          title="Replace all data?"
+          message="Replace ALL current data (players, tournaments, matches, friendlies) with this file? This cannot be undone."
+          confirmLabel="Replace everything"
+          onConfirm={doImport}
+          onCancel={() => setConfirmReplace(false)}
+          busy={busy}
+        />
+      )}
     </div>
   )
 }

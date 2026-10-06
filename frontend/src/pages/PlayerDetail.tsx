@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import { ErrorBanner, LoadingSkeleton } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { PlayerStats, TournamentFormat } from '../types'
 
@@ -35,20 +36,51 @@ function ResultBadge({ result }: { result: 'W' | 'D' | 'L' }) {
 export default function PlayerDetail() {
   const { id } = useParams()
   const pid = Number(id)
+  const [search, setSearch] = useSearchParams()
+  const tab = search.get('tab') === 'friendlies' ? 'friendlies' : 'tournaments'
+  const setTab = (v: 'tournaments' | 'friendlies') => {
+    const next = new URLSearchParams(search)
+    next.set('tab', v)
+    setSearch(next, { replace: true })
+  }
   const [stats, setStats] = useState<PlayerStats | null>(null)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<'tournaments' | 'friendlies'>('tournaments')
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [realDraft, setRealDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    api.playerStats(pid).then(setStats).catch((e) => setError(e.message))
+    api
+      .playerStats(pid)
+      .then(setStats)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
   }
-  useEffect(load, [pid])
+  useEffect(() => {
+    const ctrl = new AbortController()
+    setLoading(true)
+    api
+      .playerStats(pid, ctrl.signal)
+      .then((s) => {
+        if (!ctrl.signal.aborted) setStats(s)
+      })
+      .catch((e) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false)
+      })
+    return () => ctrl.abort()
+  }, [pid])
 
-  if (!stats) return <div className="panel">{error || 'Loading…'}</div>
+  if (loading && !stats) return <LoadingSkeleton rows={6} label="Loading player…" />
+  if (!stats)
+    return (
+      <div className="panel">
+        <ErrorBanner message={error || 'Player not found'} />
+      </div>
+    )
 
   const { player, rating, friendly_rating, tournaments: tr, friendlies: fr } = stats
 
@@ -62,8 +94,8 @@ export default function PlayerDetail() {
       })
       setEditing(false)
       load()
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setSaving(false)
     }
@@ -151,11 +183,23 @@ export default function PlayerDetail() {
         </Link>
       </div>
 
-      <div className="tabs">
-        <button className={tab === 'tournaments' ? 'active' : ''} onClick={() => setTab('tournaments')}>
+      <ErrorBanner message={error} onRetry={load} />
+
+      <div className="tabs" role="tablist" aria-label="Player record">
+        <button
+          role="tab"
+          aria-selected={tab === 'tournaments'}
+          className={tab === 'tournaments' ? 'active' : ''}
+          onClick={() => setTab('tournaments')}
+        >
           Tournaments
         </button>
-        <button className={tab === 'friendlies' ? 'active' : ''} onClick={() => setTab('friendlies')}>
+        <button
+          role="tab"
+          aria-selected={tab === 'friendlies'}
+          className={tab === 'friendlies' ? 'active' : ''}
+          onClick={() => setTab('friendlies')}
+        >
           Friendlies
         </button>
       </div>
