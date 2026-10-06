@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/players", tags=["players"])
 @router.get("", response_model=list[PlayerOut])
 def list_players(db: Session = Depends(get_db)):
     players = db.execute(select(Player).order_by(Player.name)).scalars().all()
-    ratings = compute_ratings(db)
+    ratings = compute_ratings(db, friendlies=False)
 
     counts = dict(
         db.execute(
@@ -92,7 +92,8 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
     if not player:
         raise HTTPException(404, "Player not found")
 
-    rating = compute_ratings(db).get(player_id, {"elo": 1000, "rating": 50})
+    t_rating = compute_ratings(db, friendlies=False).get(player_id, {"elo": 1000, "rating": 50})
+    f_rating = compute_ratings(db, tournaments=False).get(player_id, {"elo": 1000, "rating": 50})
 
     parts = (
         db.execute(select(Participant).where(Participant.player_id == player_id))
@@ -214,12 +215,13 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
     )
 
     player_data = PlayerOut.model_validate(player).model_dump()
-    player_data["rating"] = rating["rating"]
-    player_data["elo"] = rating["elo"]
+    player_data["rating"] = t_rating["rating"]
+    player_data["elo"] = t_rating["elo"]
 
     return {
         "player": player_data,
-        "rating": {"elo": rating["elo"], "rating": rating["rating"]},
+        "rating": {"elo": t_rating["elo"], "rating": t_rating["rating"]},
+        "friendly_rating": {"elo": f_rating["elo"], "rating": f_rating["rating"]},
         "tournaments": {"totals": t_totals, "history": history},
         "friendlies": {"totals": f_totals, "matches": f_matches},
     }

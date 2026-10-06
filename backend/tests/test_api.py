@@ -231,15 +231,16 @@ def test_games():
     assert len(games) == 1
     assert games[0]["home_name"] and games[0]["away_name"]
 
-    # Games count toward career stats and ratings.
-    stats = client.get(f"/api/players/{ids[0]}/stats").json()
-    assert stats["friendlies"]["totals"]["played"] == 1
-    assert stats["friendlies"]["matches"][0]["result"] in ("W", "D", "L")
+    # Games count toward friendly stats and friendly Elo (but not tournament Elo).
+    w_stats = client.get(f"/api/players/{ids[0]}/stats").json()
+    l_stats = client.get(f"/api/players/{ids[1]}/stats").json()
+    assert w_stats["friendlies"]["totals"]["played"] == 1
+    assert w_stats["friendlies"]["matches"][0]["result"] in ("W", "D", "L")
+    assert w_stats["friendly_rating"]["elo"] > 1000 > l_stats["friendly_rating"]["elo"]
 
     listing = client.get("/api/players").json()
-    winner = next(x for x in listing if x["id"] == ids[0])
-    loser = next(x for x in listing if x["id"] == ids[1])
-    assert winner["elo"] > 1000 > loser["elo"]
+    w = next(x for x in listing if x["id"] == ids[0])
+    assert w["elo"] == 1000  # tournament Elo is unaffected by friendlies
 
     # Same player can't play themselves.
     bad = client.post(

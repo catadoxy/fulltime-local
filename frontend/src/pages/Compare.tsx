@@ -198,8 +198,8 @@ export default function Compare() {
               </thead>
               <tbody>
                 <Section label="Tournaments" />
-                <Row label="Rating" a={data.a.rating} b={data.b.rating} />
-                <Row label="Elo" a={data.a.elo} b={data.b.elo} />
+                <Row label="Rating" a={data.a.tournaments.rating} b={data.b.tournaments.rating} />
+                <Row label="Elo" a={data.a.tournaments.elo} b={data.b.tournaments.elo} />
                 <Row label="Titles" a={data.a.tournaments.titles ?? 0} b={data.b.tournaments.titles ?? 0} />
                 <Row label="Matches" a={data.a.tournaments.played} b={data.b.tournaments.played} neutral />
                 <Row label="Wins" a={data.a.tournaments.won} b={data.b.tournaments.won} />
@@ -222,6 +222,8 @@ export default function Compare() {
                 {(data.a.friendlies.played > 0 || data.b.friendlies.played > 0) && (
                   <>
                     <Section label="Friendlies" />
+                    <Row label="Friendly rating" a={data.a.friendlies.rating} b={data.b.friendlies.rating} />
+                    <Row label="Friendly Elo" a={data.a.friendlies.elo} b={data.b.friendlies.elo} />
                     <Row label="Played" a={data.a.friendlies.played} b={data.b.friendlies.played} neutral />
                     <Row label="Wins" a={data.a.friendlies.won} b={data.b.friendlies.won} />
                     <Row label="Draws" a={data.a.friendlies.drawn} b={data.b.friendlies.drawn} neutral />

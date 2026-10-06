@@ -50,7 +50,7 @@ export default function PlayerDetail() {
 
   if (!stats) return <div className="panel">{error || 'Loading…'}</div>
 
-  const { player, rating, tournaments: tr, friendlies: fr } = stats
+  const { player, rating, friendly_rating, tournaments: tr, friendlies: fr } = stats
 
   async function savePlayer() {
     setSaving(true)
@@ -236,14 +236,18 @@ export default function PlayerDetail() {
       ) : (
         <div>
           <div className="stats-grid" style={{ marginBottom: '0.75rem' }}>
+            <Stat label="Friendly rating" value={friendly_rating.rating} />
+            <Stat label="Friendly Elo" value={friendly_rating.elo} />
             <Stat label="Friendlies" value={fr.totals.played} />
             <Stat label="Won" value={fr.totals.won} />
-            <Stat label="Drawn" value={fr.totals.drawn} />
-            <Stat label="Lost" value={fr.totals.lost} />
           </div>
           <div className="stats-grid" style={{ marginBottom: '1rem' }}>
+            <Stat label="Drawn" value={fr.totals.drawn} />
+            <Stat label="Lost" value={fr.totals.lost} />
             <Stat label="Goals for" value={fr.totals.goals_for} />
             <Stat label="Goals against" value={fr.totals.goals_against} />
+          </div>
+          <div className="stats-grid" style={{ marginBottom: '1rem' }}>
             <Stat label="Win rate" value={`${fr.totals.win_rate}%`} />
           </div>
 

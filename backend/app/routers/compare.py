@@ -11,7 +11,7 @@ from ..services.ratings import compute_ratings
 router = APIRouter(prefix="/api/compare", tags=["compare"])
 
 
-def _summary(db: Session, player: Player, ratings: dict) -> dict:
+def _summary(db: Session, player: Player, t_ratings: dict, f_ratings: dict) -> dict:
     pid = player.id
 
     t_played = t_won = t_drawn = t_lost = t_gf = t_ga = 0
@@ -51,12 +51,13 @@ def _summary(db: Session, player: Player, ratings: dict) -> dict:
         else:
             f_drawn += 1
 
-    r = ratings.get(pid, {"elo": 1000, "rating": 50})
+    tr = t_ratings.get(pid, {"elo": 1000, "rating": 50})
+    fr = f_ratings.get(pid, {"elo": 1000, "rating": 50})
     return {
         "player": {"id": pid, "name": player.name},
-        "elo": r["elo"],
-        "rating": r["rating"],
         "tournaments": {
+            "elo": tr["elo"],
+            "rating": tr["rating"],
             "played": t_played,
             "won": t_won,
             "drawn": t_drawn,
@@ -67,6 +68,8 @@ def _summary(db: Session, player: Player, ratings: dict) -> dict:
             "win_rate": round(100 * t_won / t_played) if t_played else 0,
         },
         "friendlies": {
+            "elo": fr["elo"],
+            "rating": fr["rating"],
             "played": f_played,
             "won": f_won,
             "drawn": f_drawn,
@@ -87,7 +90,8 @@ def compare(a: int = Query(...), b: int = Query(...), db: Session = Depends(get_
     if not pa or not pb:
         raise HTTPException(404, "Player not found")
 
-    ratings = compute_ratings(db)
+    t_ratings = compute_ratings(db, friendlies=False)
+    f_ratings = compute_ratings(db, tournaments=False)
 
     a_wins = b_wins = draws = a_goals = b_goals = 0
     matches: list[dict] = []
@@ -144,8 +148,8 @@ def compare(a: int = Query(...), b: int = Query(...), db: Session = Depends(get_
     matches.sort(key=lambda x: str(x["date"] or ""), reverse=True)
 
     return {
-        "a": _summary(db, pa, ratings),
-        "b": _summary(db, pb, ratings),
+        "a": _summary(db, pa, t_ratings, f_ratings),
+        "b": _summary(db, pb, t_ratings, f_ratings),
         "head_to_head": {
             "a_wins": a_wins,
             "b_wins": b_wins,

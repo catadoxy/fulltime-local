@@ -152,16 +152,20 @@ export interface FriendlyMatch {
 export interface PlayerStats {
   player: Player
   rating: { elo: number; rating: number }
+  friendly_rating: { elo: number; rating: number }
   tournaments: { totals: PlayerTotals; history: PlayerHistoryRow[] }
   friendlies: { totals: PlayerTotals; matches: FriendlyMatch[] }
 }
 
-export interface CompareSummary {
-  player: { id: number; name: string }
+export interface CompareSection extends PlayerTotals {
   elo: number
   rating: number
-  tournaments: PlayerTotals
-  friendlies: PlayerTotals
+}
+
+export interface CompareSummary {
+  player: { id: number; name: string }
+  tournaments: CompareSection
+  friendlies: CompareSection
 }
 
 export interface HeadToHeadMatch {
