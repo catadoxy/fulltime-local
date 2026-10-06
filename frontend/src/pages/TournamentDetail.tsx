@@ -489,7 +489,10 @@ function Bracket({ matches }: { matches: Match[] }) {
   const stages = KNOCKOUT_ORDER.filter((s) => byStage.has(s))
 
   return (
-    <div className="row" style={{ alignItems: 'stretch', gap: '1rem', overflowX: 'auto' }}>
+    <div
+      className="bracket"
+      style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}
+    >
       {stages.map((stage) => (
         <div className="bracket-col" key={stage}>
           <div className="round-header">{STAGE_LABELS[stage] ?? stage}</div>
