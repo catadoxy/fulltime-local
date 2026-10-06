@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -14,18 +14,21 @@ router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
 
 @router.get("")
-def list_tournaments(db: Session = Depends(get_db), limit: int = 200, offset: int = 0):
+def list_tournaments(
+    db: Session = Depends(get_db),
+    limit: int = 200,
+    offset: int = 0,
+    q: str | None = None,
+):
     # Newest first by tournament date, falling back to creation time.
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
     order = func.coalesce(Tournament.start_date, func.date(Tournament.created_at)).desc()
-    tours = (
-        db.execute(
-            select(Tournament).order_by(order, Tournament.id.desc()).limit(limit).offset(offset)
-        )
-        .scalars()
-        .all()
-    )
+    stmt = select(Tournament).order_by(order, Tournament.id.desc())
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(Tournament.name.ilike(like), Tournament.note.ilike(like)))
+    tours = db.execute(stmt.limit(limit).offset(offset)).scalars().all()
     return [tournament_out(t) for t in tours]
 
 

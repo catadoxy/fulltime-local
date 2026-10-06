@@ -46,6 +46,8 @@ export default function PlayerDetail() {
   const [stats, setStats] = useState<PlayerStats | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [friendlyQuery, setFriendlyQuery] = useState('')
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [realDraft, setRealDraft] = useState('')
@@ -225,7 +227,21 @@ export default function PlayerDetail() {
           </div>
 
           <div className="panel">
-            <h3 style={{ marginTop: 0 }}>Tournament history</h3>
+            <div className="row between" style={{ marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>Tournament history</h3>
+              {tr.history.length > 3 && (
+                <div className="search-field" style={{ minWidth: 200 }}>
+                  <label htmlFor="history-search">Search history</label>
+                  <input
+                    id="history-search"
+                    type="search"
+                    value={historyQuery}
+                    placeholder="Tournament name…"
+                    onChange={(e) => setHistoryQuery(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
             <table>
               <thead>
                 <tr>
@@ -242,7 +258,13 @@ export default function PlayerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {tr.history.map((h) => (
+                {tr.history
+                  .filter((h) =>
+                    historyQuery.trim()
+                      ? h.name.toLowerCase().includes(historyQuery.trim().toLowerCase())
+                      : true,
+                  )
+                  .map((h) => (
                   <tr key={h.tournament_id}>
                     <td>
                       <Link to={`/t/${h.tournament_id}`}>{h.name}</Link>
@@ -273,6 +295,17 @@ export default function PlayerDetail() {
                     </td>
                   </tr>
                 )}
+                {tr.history.length > 0 &&
+                  historyQuery.trim() &&
+                  tr.history.filter((h) =>
+                    h.name.toLowerCase().includes(historyQuery.trim().toLowerCase()),
+                  ).length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="muted">
+                        No tournaments match “{historyQuery.trim()}”.
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
@@ -296,7 +329,21 @@ export default function PlayerDetail() {
           </div>
 
           <div className="panel">
-            <h3 style={{ marginTop: 0 }}>Friendly results</h3>
+            <div className="row between" style={{ marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>Friendly results</h3>
+              {fr.matches.length > 3 && (
+                <div className="search-field" style={{ minWidth: 200 }}>
+                  <label htmlFor="friendly-search">Search friendlies</label>
+                  <input
+                    id="friendly-search"
+                    type="search"
+                    value={friendlyQuery}
+                    placeholder="Opponent or note…"
+                    onChange={(e) => setFriendlyQuery(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
             <table>
               <thead>
                 <tr>
@@ -309,7 +356,15 @@ export default function PlayerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {fr.matches.map((m) => (
+                {fr.matches
+                  .filter((m) =>
+                    friendlyQuery.trim()
+                      ? `${m.opponent_name} ${m.note ?? ''}`
+                          .toLowerCase()
+                          .includes(friendlyQuery.trim().toLowerCase())
+                      : true,
+                  )
+                  .map((m) => (
                   <tr key={m.id}>
                     <td className="muted small">{m.played_at}</td>
                     <td>

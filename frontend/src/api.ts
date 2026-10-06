@@ -45,10 +45,11 @@ async function parseError(res: Response): Promise<string> {
 export const api = {
   meta: (signal?: AbortSignal) => http<Meta>('/api/meta', { signal }),
 
-  players: (params?: { limit?: number; offset?: number }, signal?: AbortSignal) => {
+  players: (params?: { limit?: number; offset?: number; q?: string }, signal?: AbortSignal) => {
     const q = new URLSearchParams()
     if (params?.limit != null) q.set('limit', String(params.limit))
     if (params?.offset != null) q.set('offset', String(params.offset))
+    if (params?.q?.trim()) q.set('q', params.q.trim())
     const suffix = q.toString() ? `?${q}` : ''
     return http<Player[]>(`/api/players${suffix}`, { signal })
   },
@@ -79,10 +80,11 @@ export const api = {
     http<{ ok: boolean }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
   authLogout: () => http<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
 
-  tournaments: (params?: { limit?: number; offset?: number }, signal?: AbortSignal) => {
+  tournaments: (params?: { limit?: number; offset?: number; q?: string }, signal?: AbortSignal) => {
     const q = new URLSearchParams()
     if (params?.limit != null) q.set('limit', String(params.limit))
     if (params?.offset != null) q.set('offset', String(params.offset))
+    if (params?.q?.trim()) q.set('q', params.q.trim())
     const suffix = q.toString() ? `?${q}` : ''
     return http<Tournament[]>(`/api/tournaments${suffix}`, { signal })
   },

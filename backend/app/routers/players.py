@@ -18,14 +18,15 @@ def list_players(
     db: Session = Depends(get_db),
     limit: int = 500,
     offset: int = 0,
+    q: str | None = None,
 ):
     limit = max(1, min(limit, 1000))
     offset = max(0, offset)
-    players = (
-        db.execute(select(Player).order_by(Player.name).limit(limit).offset(offset))
-        .scalars()
-        .all()
-    )
+    stmt = select(Player).order_by(Player.name)
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(Player.name.ilike(like), Player.real_name.ilike(like)))
+    players = db.execute(stmt.limit(limit).offset(offset)).scalars().all()
     ratings = compute_ratings(db, friendlies=False)
 
     counts = dict(

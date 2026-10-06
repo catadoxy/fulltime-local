@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import { ConfirmDialog, EmptyState, ErrorBanner, SearchInput, SortableTh } from '../components/ui'
+import { ConfirmDialog, EmptyState, ErrorBanner, SortableTh } from '../components/ui'
 import type { Player } from '../types'
 
 export default function Players() {
@@ -10,6 +10,7 @@ export default function Players() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [pendingDelete, setPendingDelete] = useState<Player | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [sort, setSort] = useState<{ key: 'name' | 'rating' | 'tournaments'; dir: 'asc' | 'desc' }>({
@@ -17,24 +18,39 @@ export default function Players() {
     dir: 'asc',
   })
 
-  const load = async (signal?: AbortSignal) => {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await api.players({ limit: 500 }, signal)
-      if (!signal?.aborted) setPlayers(data)
-    } catch (e) {
-      if (!signal?.aborted) setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      if (!signal?.aborted) setLoading(false)
-    }
-  }
+  // Debounce server search so typing doesn't spam the API.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => clearTimeout(t)
+  }, [query])
 
   useEffect(() => {
     const ctrl = new AbortController()
-    void load(ctrl.signal)
+    setLoading(true)
+    setError('')
+    api
+      .players({ limit: 500, q: debouncedQuery || undefined }, ctrl.signal)
+      .then((data) => {
+        if (!ctrl.signal.aborted) setPlayers(data)
+      })
+      .catch((e) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false)
+      })
     return () => ctrl.abort()
-  }, [])
+  }, [debouncedQuery])
+
+  const reload = () => {
+    const ctrl = new AbortController()
+    setLoading(true)
+    api
+      .players({ limit: 500, q: debouncedQuery || undefined }, ctrl.signal)
+      .then(setPlayers)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
+  }
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
@@ -42,7 +58,7 @@ export default function Players() {
     try {
       await api.createPlayer({ name: name.trim() })
       setName('')
-      void load()
+      reload()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -54,7 +70,7 @@ export default function Players() {
     try {
       await api.deletePlayer(pendingDelete.id)
       setPendingDelete(null)
-      void load()
+      reload()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -70,17 +86,9 @@ export default function Players() {
     )
   }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return players
-    return players.filter(
-      (p) => p.name.toLowerCase().includes(q) || (p.real_name ?? '').toLowerCase().includes(q),
-    )
-  }, [players, query])
-
   const sorted = useMemo(() => {
     const dir = sort.dir === 'asc' ? 1 : -1
-    return [...filtered].sort((a, b) => {
+    return [...players].sort((a, b) => {
       let av: number | string
       let bv: number | string
       if (sort.key === 'name') {
@@ -97,7 +105,7 @@ export default function Players() {
       if (av > bv) return 1 * dir
       return 0
     })
-  }, [filtered, sort])
+  }, [players, sort])
 
   return (
     <div>
@@ -119,27 +127,44 @@ export default function Players() {
           Add player
         </button>
       </form>
-      <ErrorBanner message={error} onRetry={() => load()} />
+      <ErrorBanner message={error} onRetry={reload} />
 
       <div className="panel">
         <div className="toolbar">
-          <SearchInput value={query} onChange={setQuery} label="players" placeholder="Search players…" />
+          <div className="search-field grow">
+            <label htmlFor="search-players-list">Search players</label>
+            <div className="row" style={{ gap: '0.4rem' }}>
+              <input
+                id="search-players-list"
+                type="search"
+                value={query}
+                placeholder="Name or real name…"
+                onChange={(e) => setQuery(e.target.value)}
+                className="full"
+              />
+              {query && (
+                <button type="button" className="btn" onClick={() => setQuery('')}>
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
           <span className="muted small" aria-live="polite">
-            {sorted.length} of {players.length}
+            {debouncedQuery ? `${sorted.length} match${sorted.length === 1 ? '' : 'es'}` : `${sorted.length} players`}
+            {loading ? ' · searching…' : ''}
           </span>
         </div>
-        <table>
+        <table className="players-table">
           <thead>
             <tr>
               <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
-              <SortableTh label="Rating" sortKey="rating" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} numeric />
+              <SortableTh label="Rating" sortKey="rating" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
               <SortableTh
                 label="Tournaments"
                 sortKey="tournaments"
                 activeKey={sort.key}
                 dir={sort.dir}
                 onToggle={toggleSort}
-                numeric
               />
               <th style={{ width: 90 }}></th>
             </tr>
@@ -158,13 +183,9 @@ export default function Players() {
                 </td>
                 <td>
                   <span className="badge">{p.tournaments ?? 0}</span>
-                  {!!p.titles && (
-                    <span className="badge done" style={{ marginLeft: 6 }}>
-                      🏆 {p.titles}
-                    </span>
-                  )}
+                  {!!p.titles && <span className="badge done titles-badge">🏆 {p.titles}</span>}
                 </td>
-                <td>
+                <td className="actions">
                   <button className="danger" onClick={() => setPendingDelete(p)}>
                     Delete
                   </button>
@@ -178,9 +199,9 @@ export default function Players() {
         ) : (
           sorted.length === 0 && (
             <EmptyState>
-              {players.length === 0
-                ? 'No players yet. Add some above, or import a legacy database.'
-                : 'No players match this search.'}
+              {debouncedQuery
+                ? `No players match “${debouncedQuery}”.`
+                : 'No players yet. Add some above, or import a legacy database.'}
             </EmptyState>
           )
         )}
