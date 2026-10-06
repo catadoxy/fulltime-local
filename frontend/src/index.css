@@ -518,7 +518,7 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .bracket-match { grid-template-columns: minmax(0, 1fr) 60px minmax(0, 1fr); }
 
 /* ---- Bracket ---- */
-.bracket { display: grid; gap: 0.75rem; }
+.bracket { display: grid; gap: 0.75rem; padding-bottom: 1rem; }
 .bracket-col { min-width: 0; }
 .bracket-round { display: flex; flex-direction: column; gap: 1rem; justify-content: space-around; height: 100%; }
 
