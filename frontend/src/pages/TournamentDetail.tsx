@@ -387,6 +387,7 @@ function MatchRow({
 
   const ready = match.home_id != null && match.away_id != null
   const knockout = isKnockout(match.stage)
+  const tied = home !== '' && away !== '' && Number(home) === Number(away)
   const dirty =
     home !== asStr(match.home_score) ||
     away !== asStr(match.away_score) ||
@@ -459,9 +460,9 @@ function MatchRow({
           )}
         </div>
       </div>
-      {ready && knockout && (
+      {ready && knockout && tied && (
         <div className="row small muted" style={{ margin: '0 0 0.4rem 0.6rem' }}>
-          Penalties (if level):
+          Penalties:
           <input className="no-spin" type="number" inputMode="numeric" min={0} aria-label="Home penalties" style={{ width: 52 }} value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />
           <span>-</span>
           <input className="no-spin" type="number" inputMode="numeric" min={0} aria-label="Away penalties" style={{ width: 52 }} value={ap} disabled={busy} onChange={(e) => setAp(e.target.value)} />
@@ -499,10 +500,14 @@ function Bracket({ matches }: { matches: Match[] }) {
                   {m.home_name ?? <span className="muted">TBD</span>}
                 </div>
                 <div className="score" style={{ textAlign: 'center' }}>
-                  {m.played ? `${m.home_score}-${m.away_score}` : '–'}
+                  {m.played
+                    ? m.home_score != null && m.away_score != null
+                      ? `${m.home_score}–${m.away_score}`
+                      : 'bye'
+                    : '–'}
                   {m.home_pen != null && m.away_pen != null && (
                     <div className="small muted">
-                      ({m.home_pen}-{m.away_pen})
+                      ({m.home_pen}–{m.away_pen})
                     </div>
                   )}
                 </div>
