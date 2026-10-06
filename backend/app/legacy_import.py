@@ -6,6 +6,7 @@ preserved.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import sqlite3
 import tempfile
@@ -63,7 +64,19 @@ def import_legacy(db: Session, data: bytes, *, progress=None) -> dict:
         raise ValueError("File does not look like a supported database export")
 
     cache: dict[str, int] = {}
-    stats = {"players": 0, "tournaments": 0, "matches": 0, "skipped": 0}
+    stats = {"players": 0, "tournaments": 0, "matches": 0, "skipped": 0, "duplicates": 0}
+
+    file_hash = hashlib.sha256(data).hexdigest()
+
+    # Skip tournaments already imported from this file (or one with the same
+    # name + date), so re-importing the same export is idempotent.
+    seen_hash: set[tuple] = set()
+    seen_name_date: set[tuple] = set()
+    for existing in db.execute(select(Tournament)).scalars().all():
+        s = existing.settings or {}
+        if s.get("imported"):
+            seen_hash.add((s.get("import_hash"), s.get("source_id")))
+            seen_name_date.add((existing.name, str(existing.start_date)))
 
     # Players
     for row in cur.execute("SELECT pseudo, email, picture, note FROM joueur").fetchall():
@@ -105,12 +118,17 @@ def import_legacy(db: Session, data: bytes, *, progress=None) -> dict:
         start_dt = _parse_datetime(trow["dateDebut"]) or _parse_datetime(trow["dateFin"])
         end_dt = _parse_datetime(trow["dateFin"])
 
+        candidate_date = str(start_dt.date() if start_dt else None)
+        if (file_hash, tid) in seen_hash or (name, candidate_date) in seen_name_date:
+            stats["duplicates"] += 1
+            continue
+
         tournament = Tournament(
             name=name,
             format=fmt,
             status="completed",
             nb_pitches=max([m["numTv"] or 1 for m in matches] + [1]),
-            settings={"imported": True, "source_id": tid},
+            settings={"imported": True, "source_id": tid, "import_hash": file_hash},
             start_date=start_dt.date() if start_dt else None,
             end_date=end_dt.date() if end_dt else None,
             created_at=start_dt or datetime.utcnow(),

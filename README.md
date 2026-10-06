@@ -113,6 +113,9 @@ Open **Data** and upload an **unencrypted** SQLite `.sqlite` database (the sourc
 app's schema). Historical tournaments are imported as completed. Encrypted
 exports are not supported — decrypt them first if needed.
 
+Re-importing the same file is safe (tournaments already imported are skipped).
+Tick **Replace all existing data** to wipe everything first and start clean.
+
 ---
 
 ## Configuration

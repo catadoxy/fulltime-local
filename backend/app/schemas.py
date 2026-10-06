@@ -51,6 +51,7 @@ class TournamentCreate(BaseModel):
 class TournamentUpdate(BaseModel):
     name: str | None = None
     note: str | None = None
+    start_date: date | None = None
     nb_pitches: int | None = Field(default=None, ge=1, le=64)
     settings: dict[str, Any] | None = None
 

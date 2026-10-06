@@ -78,9 +78,10 @@ export const api = {
   clearResult: (tid: number, mid: number) =>
     http<Match>(`/api/tournaments/${tid}/matches/${mid}/result`, { method: 'DELETE' }),
 
-  importLegacy: async (file: File) => {
+  importLegacy: async (file: File, replace = false) => {
     const form = new FormData()
     form.append('file', file)
+    form.append('replace', replace ? 'true' : 'false')
     const res = await fetch(`${BASE}/api/import/legacy`, { method: 'POST', body: form })
     if (!res.ok) {
       let message = res.statusText

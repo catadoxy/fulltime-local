@@ -12,6 +12,7 @@ export default function Tournaments() {
 
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
+  const [startDate, setStartDate] = useState('')
   const [format, setFormat] = useState<TournamentFormat>('league')
   const [nbPitches, setNbPitches] = useState(1)
   const [selected, setSelected] = useState<number[]>([])
@@ -44,6 +45,7 @@ export default function Tournaments() {
       const t = await api.createTournament({
         name,
         note: note.trim() || null,
+        start_date: startDate || null,
         format,
         player_ids: selected,
         nb_pitches: nbPitches,
@@ -98,15 +100,26 @@ export default function Tournaments() {
             </div>
           </div>
 
-          <div className="field">
-            <label htmlFor="new-note">Game / note (optional)</label>
-            <input
-              id="new-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. FIFA 24, Rocket League"
-              style={{ width: '100%' }}
-            />
+          <div className="row" style={{ alignItems: 'flex-end', marginBottom: '0.75rem' }}>
+            <div className="grow">
+              <label htmlFor="new-note">Game / note (optional)</label>
+              <input
+                id="new-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. FIFA 24, Rocket League"
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-date">Start date (optional)</label>
+              <input
+                id="new-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
           </div>
 
           <FormatSettings format={format} settings={settings} setSettings={setSettings} />

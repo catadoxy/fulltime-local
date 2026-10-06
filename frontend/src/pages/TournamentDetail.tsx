@@ -31,6 +31,7 @@ export default function TournamentDetail() {
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [noteDraft, setNoteDraft] = useState('')
+  const [dateDraft, setDateDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
@@ -95,6 +96,7 @@ export default function TournamentDetail() {
       await api.updateTournament(t.id, {
         name: nameDraft.trim() || t.name,
         note: noteDraft.trim() || null,
+        start_date: dateDraft || null,
       })
       setEditing(false)
       load()
@@ -152,6 +154,15 @@ export default function TournamentDetail() {
                   style={{ width: '100%' }}
                 />
               </div>
+              <div>
+                <label htmlFor="t-date">Start date</label>
+                <input
+                  id="t-date"
+                  type="date"
+                  value={dateDraft}
+                  onChange={(e) => setDateDraft(e.target.value)}
+                />
+              </div>
               <div className="row">
                 <button className="primary" disabled={saving} onClick={saveDetails}>
                   Save
@@ -169,6 +180,7 @@ export default function TournamentDetail() {
                   onClick={() => {
                     setNameDraft(t.name)
                     setNoteDraft(t.note ?? '')
+                    setDateDraft(t.start_date ?? '')
                     setEditing(true)
                   }}
                 >

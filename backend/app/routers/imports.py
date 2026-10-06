@@ -3,12 +3,14 @@ from __future__ import annotations
 import datetime
 import os
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from ..config import DATABASE_URL
 from ..database import engine, get_db
+from ..models import Game, Group, Match, Participant, Player, Tournament
 from ..services.fixtures import default_settings
 from ..legacy_import import import_legacy
 
@@ -32,15 +34,32 @@ def meta():
 
 
 @router.post("/import/legacy")
-async def import_legacy_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_legacy_file(
+    file: UploadFile = File(...),
+    replace: bool = Form(False),
+    db: Session = Depends(get_db),
+):
     data = await file.read()
     if not data:
         raise HTTPException(400, "Empty file")
     try:
+        if replace:
+            _wipe(db)
         stats = import_legacy(db, data)
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(400, str(exc))
-    return {"ok": True, "filename": file.filename, **stats}
+    return {"ok": True, "filename": file.filename, "replaced": replace, **stats}
+
+
+def _wipe(db: Session) -> None:
+    """Delete all local data (used by the 'replace' import option).
+
+    Left uncommitted so it rolls back if the import then fails.
+    """
+    for model in (Match, Game, Participant, Group, Tournament, Player):
+        db.execute(delete(model))
+    db.flush()
 
 
 @router.get("/export/backup")
