@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
 import { ErrorBanner, LoadingSkeleton } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { PlayerStats, TournamentFormat } from '../types'
@@ -34,6 +35,7 @@ function ResultBadge({ result }: { result: 'W' | 'D' | 'L' }) {
 }
 
 export default function PlayerDetail() {
+  const { canEdit } = useAuth()
   const { id } = useParams()
   const pid = Number(id)
   const [search, setSearch] = useSearchParams()
@@ -144,17 +146,19 @@ export default function PlayerDetail() {
             <>
               <h1 style={{ marginBottom: player.real_name ? 2 : 6 }}>
                 {player.name}{' '}
-                <button
-                  className="btn"
-                  style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
-                  onClick={() => {
-                    setNameDraft(player.name)
-                    setRealDraft(player.real_name ?? '')
-                    setEditing(true)
-                  }}
-                >
-                  ✎ Edit
-                </button>
+                {canEdit && (
+                  <button
+                    className="btn"
+                    style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
+                    onClick={() => {
+                      setNameDraft(player.name)
+                      setRealDraft(player.real_name ?? '')
+                      setEditing(true)
+                    }}
+                  >
+                    ✎ Edit
+                  </button>
+                )}
               </h1>
               {player.real_name && (
                 <div className="small muted" style={{ marginBottom: 4 }}>

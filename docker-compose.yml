@@ -12,6 +12,8 @@ services:
       - ./data:/data
     environment:
       - TZ=Europe/Bucharest
-      # Uncomment to require a login (single shared password):
+      # Uncomment to require a login with the legacy single shared password
+      # (admin access; you can then create named admin/viewer accounts in
+      # the app under Users):
       # - FTL_PASSWORD=change-me
     restart: unless-stopped

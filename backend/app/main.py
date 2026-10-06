@@ -9,8 +9,8 @@ from fastapi.staticfiles import StaticFiles
 
 from . import auth
 from .config import APP_NAME, APP_VERSION, FRONTEND_DIR
-from .database import Base, engine
-from .routers import compare, games, imports, players, tournaments
+from .database import Base, SessionLocal, engine
+from .routers import compare, games, imports, players, tournaments, users
 
 
 @asynccontextmanager
@@ -56,6 +56,7 @@ def health():
 
 
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(players.router)
 app.include_router(tournaments.router)
 app.include_router(games.router)
@@ -65,15 +66,29 @@ app.include_router(imports.router)
 
 @app.middleware("http")
 async def _auth_guard(request, call_next):
-    if auth.AUTH_ENABLED:
-        path = request.url.path
-        protected = (
-            path.startswith("/api")
-            and not path.startswith("/api/auth")
-            and path != "/api/health"
-        )
-        if protected and not auth.is_authenticated(request):
+    from .models import User
+
+    path = request.url.path
+    if path.startswith("/api/auth") or path == "/api/health":
+        return await call_next(request)
+    if not path.startswith("/api"):
+        return await call_next(request)
+
+    # Auth is required when a legacy password is set or any user exists.
+    # Open the session here (middleware runs outside Depends(get_db)).
+    db = SessionLocal()
+    try:
+        required = auth.auth_required_db(db)
+        if not required:
+            return await call_next(request)
+        principal = auth.get_current_user(request, db)
+        if principal is None:
             return JSONResponse({"detail": "Not authenticated"}, status_code=401)
+        # Viewers are read-only: only GET/HEAD/OPTIONS.
+        if not auth.is_admin(principal) and request.method not in ("GET", "HEAD", "OPTIONS"):
+            return JSONResponse({"detail": "Viewer role is read-only"}, status_code=403)
+    finally:
+        db.close()
     return await call_next(request)
 
 

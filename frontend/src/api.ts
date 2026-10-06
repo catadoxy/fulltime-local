@@ -75,10 +75,29 @@ export const api = {
   deleteGame: (id: number) => http<void>(`/api/games/${id}`, { method: 'DELETE' }),
 
   authStatus: () =>
-    http<{ auth_required: boolean; authenticated: boolean }>('/api/auth/status'),
-  authLogin: (password: string) =>
-    http<{ ok: boolean }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
+    http<{
+      auth_required: boolean
+      authenticated: boolean
+      setup_required?: boolean
+      user_count?: number
+      user?: { id: number; username: string; role: string; legacy?: boolean } | null
+    }>('/api/auth/status'),
+  authLogin: (username: string, password: string) =>
+    http<{ ok: boolean; user?: unknown }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  authSetup: (username: string, password: string) =>
+    http<{ ok: boolean }>('/api/auth/setup', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
   authLogout: () => http<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
+  users: (signal?: AbortSignal) =>
+    http<{ id: number; username: string; role: string }[]>('/api/users', { signal }),
+  createUser: (data: { username: string; password: string; role: string }) =>
+    http<unknown>('/api/users', { method: 'POST', body: JSON.stringify(data) }),
+  deleteUser: (id: number) => http<void>(`/api/users/${id}`, { method: 'DELETE' }),
 
   tournaments: (params?: { limit?: number; offset?: number; q?: string }, signal?: AbortSignal) => {
     const q = new URLSearchParams()

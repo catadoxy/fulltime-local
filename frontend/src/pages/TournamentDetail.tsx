@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
 import { ConfirmDialog, ErrorBanner, LoadingSkeleton } from '../components/ui'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
@@ -25,6 +26,7 @@ export default function TournamentDetail() {
   const { id } = useParams()
   const tid = Number(id)
   const navigate = useNavigate()
+  const { canEdit } = useAuth()
   const [t, setT] = useState<TDetail | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [tables, setTables] = useState<Table[]>([])
@@ -192,18 +194,20 @@ export default function TournamentDetail() {
             <>
               <h1 style={{ marginBottom: t.note ? 2 : 6 }}>
                 {t.name}{' '}
-                <button
-                  className="btn"
-                  style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
-                  onClick={() => {
-                    setNameDraft(t.name)
-                    setNoteDraft(t.note ?? '')
-                    setDateDraft(t.start_date ?? '')
-                    setEditing(true)
-                  }}
-                >
-                  ✎ Edit
-                </button>
+                {canEdit && (
+                  <button
+                    className="btn"
+                    style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
+                    onClick={() => {
+                      setNameDraft(t.name)
+                      setNoteDraft(t.note ?? '')
+                      setDateDraft(t.start_date ?? '')
+                      setEditing(true)
+                    }}
+                  >
+                    ✎ Edit
+                  </button>
+                )}
               </h1>
               {t.note && (
                 <div className="muted small" style={{ marginBottom: 4 }}>
@@ -220,7 +224,7 @@ export default function TournamentDetail() {
           )}
         </div>
         <div className="row">
-          {t.status === 'active' && (
+          {canEdit && t.status === 'active' && (
             <button
               className="primary"
               title="Mark this tournament as completed"
@@ -229,9 +233,11 @@ export default function TournamentDetail() {
               Close tournament
             </button>
           )}
-          <button className="danger" onClick={() => setConfirmDelete(true)}>
-            Delete
-          </button>
+          {canEdit && (
+            <button className="danger" onClick={() => setConfirmDelete(true)}>
+              Delete
+            </button>
+          )}
           <Link className="btn" to="/tournaments">
             ← All tournaments
           </Link>
@@ -274,7 +280,14 @@ export default function TournamentDetail() {
         </div>
       )}
 
-      <Fixtures matches={matches} groupNames={groupNames} nbPitches={t.nb_pitches} tid={tid} onChange={load} />
+      <Fixtures
+        matches={matches}
+        groupNames={groupNames}
+        nbPitches={t.nb_pitches}
+        tid={tid}
+        onChange={() => load()}
+        canEdit={canEdit}
+      />
 
       {hasBracket && (
         <div className="panel">
@@ -338,12 +351,14 @@ function Fixtures({
   nbPitches,
   tid,
   onChange,
+  canEdit,
 }: {
   matches: Match[]
   groupNames: Map<number, string>
   nbPitches: number
   tid: number
   onChange: () => void
+  canEdit: boolean
 }) {
   // Group into sections: stage (+ group), then by round within the section.
   const sections = useMemo(() => {
@@ -390,7 +405,14 @@ function Fixtures({
                 {section.matches
                   .filter((m) => m.round_number === round)
                   .map((m) => (
-                    <MatchRow key={m.id} match={m} tid={tid} nbPitches={nbPitches} onChange={onChange} />
+                    <MatchRow
+                      key={m.id}
+                      match={m}
+                      tid={tid}
+                      nbPitches={nbPitches}
+                      onChange={onChange}
+                      canEdit={canEdit}
+                    />
                   ))}
               </div>
             ))}
@@ -408,11 +430,13 @@ function MatchRow({
   tid,
   nbPitches,
   onChange,
+  canEdit,
 }: {
   match: Match
   tid: number
   nbPitches: number
   onChange: () => void
+  canEdit: boolean
 }) {
   const [home, setHome] = useState(asStr(match.home_score))
   const [away, setAway] = useState(asStr(match.away_score))
@@ -438,7 +462,7 @@ function MatchRow({
     away !== asStr(match.away_score) ||
     hp !== asStr(match.home_pen) ||
     ap !== asStr(match.away_pen)
-  const canSave = ready && home !== '' && away !== '' && dirty
+  const canSave = canEdit && ready && home !== '' && away !== '' && dirty
 
   async function save() {
     setBusy(true)
@@ -491,7 +515,7 @@ function MatchRow({
             min={0}
             aria-label={`${match.home_name ?? 'Home'} score`}
             value={home}
-            disabled={!ready || busy}
+            disabled={!canEdit || !ready || busy}
             onChange={(e) => setHome(e.target.value)}
           />
           <span className="muted">-</span>
@@ -502,7 +526,7 @@ function MatchRow({
             min={0}
             aria-label={`${match.away_name ?? 'Away'} score`}
             value={away}
-            disabled={!ready || busy}
+            disabled={!canEdit || !ready || busy}
             onChange={(e) => setAway(e.target.value)}
           />
         </div>
@@ -516,14 +540,14 @@ function MatchRow({
               Save
             </button>
           )}
-          {match.played && !dirty && (
+          {match.played && !dirty && canEdit && (
             <button className="danger" disabled={busy} onClick={() => void clear()} title="Clear this result (downstream matches are cleared too)">
               Clear
             </button>
           )}
         </div>
       </div>
-      {ready && knockout && tied && (
+      {canEdit && ready && knockout && tied && (
         <div className="row small muted" style={{ margin: '0 0 0.4rem 0.6rem' }}>
           Penalties:
           <input className="no-spin pen-input" type="number" inputMode="numeric" min={0} aria-label="Home penalties" value={hp} disabled={busy} onChange={(e) => setHp(e.target.value)} />

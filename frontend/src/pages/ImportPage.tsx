@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
 import { ConfirmDialog, ErrorBanner } from '../components/ui'
 
 interface ImportResult {
@@ -13,6 +14,7 @@ interface ImportResult {
 }
 
 export default function ImportPage() {
+  const { canEdit } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [replace, setReplace] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -67,11 +69,15 @@ export default function ImportPage() {
 
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Import a legacy database</h2>
-        <p className="muted">
-          Upload an unencrypted SQLite <code>.sqlite</code> database (the source app's schema).
-          Imported tournaments are added as completed history. Encrypted exports aren't supported.
-          Tournaments already imported from the same file are skipped, so re-importing is safe.
-        </p>
+        {!canEdit ? (
+          <p className="muted">Viewers cannot import. Ask an admin.</p>
+        ) : (
+          <>
+            <p className="muted">
+              Upload an unencrypted SQLite <code>.sqlite</code> database (the source app's schema).
+              Imported tournaments are added as completed history. Encrypted exports aren't supported.
+              Tournaments already imported from the same file are skipped, so re-importing is safe.
+            </p>
         <form onSubmit={submit}>
           <div className="row" style={{ marginBottom: '0.75rem' }}>
             <input
@@ -98,6 +104,8 @@ export default function ImportPage() {
             </p>
           )}
         </form>
+        </>
+        )}
         <ErrorBanner message={error} />
         {result && (
           <div className="banner" style={{ marginTop: '1rem' }}>

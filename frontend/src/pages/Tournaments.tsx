@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
 import { ErrorBanner, SearchInput, SortableTh, formatDate } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { Player, Tournament, TournamentFormat, TournamentSettings } from '../types'
@@ -28,6 +29,7 @@ export default function Tournaments() {
   const [submitting, setSubmitting] = useState(false)
 
   const navigate = useNavigate()
+  const { canEdit } = useAuth()
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -143,12 +145,14 @@ export default function Tournaments() {
     <div>
       <div className="row between">
         <h1>Tournaments</h1>
-        <button className="primary" onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? 'Close' : '+ New tournament'}
-        </button>
+        {canEdit && (
+          <button className="primary" onClick={() => setShowCreate((v) => !v)}>
+            {showCreate ? 'Close' : '+ New tournament'}
+          </button>
+        )}
       </div>
 
-      {showCreate && (
+      {canEdit && showCreate && (
         <form className="panel" onSubmit={submit}>
           <div className="row">
             <div className="grow">
@@ -251,7 +255,7 @@ export default function Tournaments() {
 
       <div className="panel">
         <div className="toolbar">
-          <SearchInput value={query} onChange={setQuery} label="tournaments" placeholder="Search name or game…" />
+          <SearchInput value={query} onChange={setQuery} label="Search tournaments" placeholder="Search name or game…" />
           <div>
             <label htmlFor="flt-status">Status</label>
             <select

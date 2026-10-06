@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
 import { ConfirmDialog, EmptyState, ErrorBanner, SortableTh } from '../components/ui'
 import type { Player } from '../types'
 
 export default function Players() {
+  const { canEdit } = useAuth()
   const [players, setPlayers] = useState<Player[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState('')
@@ -111,22 +113,24 @@ export default function Players() {
     <div>
       <h1>Players</h1>
 
-      <form className="panel row" onSubmit={add}>
-        <div className="grow">
-          <label htmlFor="player-name">Name</label>
-          <input
-            id="player-name"
-            className="full"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={120}
-          />
-        </div>
-        <button className="primary" type="submit" style={{ alignSelf: 'flex-end' }}>
-          Add player
-        </button>
-      </form>
+      {canEdit && (
+        <form className="panel row" onSubmit={add}>
+          <div className="grow">
+            <label htmlFor="player-name">Name</label>
+            <input
+              id="player-name"
+              className="full"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              maxLength={120}
+            />
+          </div>
+          <button className="primary" type="submit" style={{ alignSelf: 'flex-end' }}>
+            Add player
+          </button>
+        </form>
+      )}
       <ErrorBanner message={error} onRetry={reload} />
 
       <div className="panel">
@@ -166,7 +170,7 @@ export default function Players() {
                 dir={sort.dir}
                 onToggle={toggleSort}
               />
-              <th style={{ width: 90 }}></th>
+              <th style={{ width: 90 }}>{canEdit ? '' : null}</th>
             </tr>
           </thead>
           <tbody>
@@ -186,9 +190,11 @@ export default function Players() {
                   {!!p.titles && <span className="badge done titles-badge">🏆 {p.titles}</span>}
                 </td>
                 <td className="actions">
-                  <button className="danger" onClick={() => setPendingDelete(p)}>
-                    Delete
-                  </button>
+                  {canEdit && (
+                    <button className="danger" onClick={() => setPendingDelete(p)}>
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

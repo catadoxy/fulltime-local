@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
 import { ConfirmDialog, EmptyState, ErrorBanner } from '../components/ui'
 import type { Game, Player } from '../types'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
 export default function Friendlies() {
+  const { canEdit } = useAuth()
   const [games, setGames] = useState<Game[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [homeId, setHomeId] = useState('')
@@ -96,7 +98,8 @@ export default function Friendlies() {
         </div>
       </div>
 
-      <form className="panel" onSubmit={add}>
+      {canEdit && (
+        <form className="panel" onSubmit={add}>
         <div className="row" style={{ alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div>
             <label htmlFor="fr-home">Home</label>
@@ -168,6 +171,7 @@ export default function Friendlies() {
         </div>
         {players.length < 2 && <div className="muted small">Add at least two players first.</div>}
       </form>
+      )}
       <ErrorBanner message={error} onRetry={() => load()} />
 
       <div className="panel">
@@ -181,7 +185,7 @@ export default function Friendlies() {
               </th>
               <th className="away">Away</th>
               <th>Note</th>
-              <th style={{ width: 90 }}></th>
+              {canEdit && <th style={{ width: 90 }}></th>}
             </tr>
           </thead>
           <tbody>
@@ -197,11 +201,13 @@ export default function Friendlies() {
                   </td>
                   <td className={`away ${awayWin ? 'won' : ''}`}>{g.away_name}</td>
                   <td className="muted small">{g.note || '—'}</td>
-                  <td>
-                    <button className="danger" onClick={() => setPendingDelete(g)}>
-                      Delete
-                    </button>
-                  </td>
+                  {canEdit && (
+                    <td>
+                      <button className="danger" onClick={() => setPendingDelete(g)}>
+                        Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               )
             })}
