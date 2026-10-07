@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import { ErrorBanner } from '../components/ui'
 import type { CompareResult, Player } from '../types'
 
 function Row({
@@ -36,11 +37,13 @@ function Row({
       <td className={`cmp-val${aWin ? ' win' : ''}`}>
         {a}
         {suffix}
+        {aWin && <span className="muted small"> ●</span>}
       </td>
       <td className="cmp-metric">{label}</td>
       <td className={`cmp-val${bWin ? ' win' : ''}`}>
         {b}
         {suffix}
+        {bWin && <span className="muted small"> ●</span>}
       </td>
     </tr>
   )
@@ -58,13 +61,36 @@ const avg = (goals: number, played: number) => (played > 0 ? Math.round((goals /
 
 export default function Compare() {
   const [players, setPlayers] = useState<Player[]>([])
-  const [a, setA] = useState('')
-  const [b, setB] = useState('')
+  const [params, setParams] = useSearchParams()
+  const a = params.get('a') ?? ''
+  const b = params.get('b') ?? ''
   const [data, setData] = useState<CompareResult | null>(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  // Fix setA/setB clearing: keep both params in sync
+  const updateA = (v: string) => {
+    const next = new URLSearchParams(params)
+    if (v) next.set('a', v)
+    else next.delete('a')
+    setParams(next, { replace: true })
+  }
+  const updateB = (v: string) => {
+    const next = new URLSearchParams(params)
+    if (v) next.set('b', v)
+    else next.delete('b')
+    setParams(next, { replace: true })
+  }
 
   useEffect(() => {
-    api.players().then(setPlayers).catch((e) => setError(e.message))
+    const ctrl = new AbortController()
+    api
+      .players({ limit: 500 }, ctrl.signal)
+      .then(setPlayers)
+      .catch((e) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : String(e))
+      })
+    return () => ctrl.abort()
   }, [])
 
   useEffect(() => {
@@ -73,10 +99,20 @@ export default function Compare() {
       setData(null)
       return
     }
+    const ctrl = new AbortController()
+    setLoading(true)
     api
-      .compare(Number(a), Number(b))
-      .then(setData)
-      .catch((e) => setError(e.message))
+      .compare(Number(a), Number(b), ctrl.signal)
+      .then((d) => {
+        if (!ctrl.signal.aborted) setData(d)
+      })
+      .catch((e) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false)
+      })
+    return () => ctrl.abort()
   }, [a, b])
 
   return (
@@ -90,7 +126,7 @@ export default function Compare() {
         <div className="row" style={{ gap: '0.75rem', alignItems: 'flex-end' }}>
           <div className="grow">
             <label htmlFor="cmp-a">Player A</label>
-            <select id="cmp-a" value={a} onChange={(e) => setA(e.target.value)} style={{ width: '100%' }}>
+            <select id="cmp-a" value={a} onChange={(e) => updateA(e.target.value)} className="full">
               <option value="">—</option>
               {players.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -99,12 +135,23 @@ export default function Compare() {
               ))}
             </select>
           </div>
-          <span className="muted" style={{ paddingBottom: 8 }}>
-            vs
-          </span>
+          <button
+            type="button"
+            className="btn"
+            title="Swap players"
+            disabled={!a || !b}
+            onClick={() => {
+              const next = new URLSearchParams(params)
+              next.set('a', b)
+              next.set('b', a)
+              setParams(next, { replace: true })
+            }}
+          >
+            ⇄
+          </button>
           <div className="grow">
             <label htmlFor="cmp-b">Player B</label>
-            <select id="cmp-b" value={b} onChange={(e) => setB(e.target.value)} style={{ width: '100%' }}>
+            <select id="cmp-b" value={b} onChange={(e) => updateB(e.target.value)} className="full">
               <option value="">—</option>
               {players.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -114,8 +161,9 @@ export default function Compare() {
             </select>
           </div>
         </div>
-        {a && b && a === b && <div className="error">Pick two different players.</div>}
-        {error && <div className="error">{error}</div>}
+        {a && b && a === b && <div className="error" role="alert">Pick two different players.</div>}
+        <ErrorBanner message={error} />
+        {loading && <p className="muted">Comparing…</p>}
       </div>
 
       {data && (
@@ -162,9 +210,9 @@ export default function Compare() {
                     </td>
                     <td>
                       {m.result === 'A' ? (
-                        <span className="badge done">{data.a.player.name}</span>
+                        <span className="badge done">{data.a.player.name} wins</span>
                       ) : m.result === 'B' ? (
-                        <span className="badge done">{data.b.player.name}</span>
+                        <span className="badge done">{data.b.player.name} wins</span>
                       ) : (
                         <span className="badge">Draw</span>
                       )}

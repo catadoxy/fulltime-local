@@ -20,7 +20,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Compare** any two players (head-to-head and side-by-side).
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; 4 colour themes.
-- **Optional password** — set `FTL_PASSWORD` to require a login.
+- **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
+  require login. Admins can do everything, viewers are read-only.
 - **Import** a legacy SQLite database.
 
 ---
@@ -127,8 +128,20 @@ All optional, via environment variables:
 | `FTL_DATA_DIR`     | `backend/data`                     | folder holding the SQLite DB     |
 | `FTL_DATABASE_URL` | `sqlite:///<DATA_DIR>/fulltime.db` | full database URL override       |
 | `FTL_FRONTEND_DIR` | `frontend/dist`                    | where the built SPA is served    |
-| `FTL_PASSWORD`     | *(unset)*                          | require this password to log in  |
+| `FTL_PASSWORD`     | *(unset)*                          | legacy single admin password (login as `admin`). Prefer user accounts. |
 | `FTL_SECRET`       | auto (file in data dir)            | session-cookie signing key       |
+
+### Users & roles
+
+Open the app with no users and no `FTL_PASSWORD` and everything is editable
+(previous behaviour). To secure it, either:
+
+- set `FTL_PASSWORD` (legacy: log in as `admin` with that password), or
+- open the app and create the first admin account in the setup screen.
+
+Admins manage named accounts under **Users**: `viewer` accounts are read-only
+(they can browse but every `POST`/`PATCH`/`DELETE` returns `403`), `admin`
+accounts can do everything. The last admin cannot be deleted or demoted.
 
 ---
 

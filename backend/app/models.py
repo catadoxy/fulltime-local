@@ -141,3 +141,19 @@ class Game(Base):
 
     home: Mapped[Player] = relationship(foreign_keys=[home_id])
     away: Mapped[Player] = relationship(foreign_keys=[away_id])
+
+
+class User(Base):
+    """App login account with a role.
+
+    ``admin`` can do everything; ``viewer`` is read-only (GET only).
+    Passwords are stored as PBKDF2-HMAC-SHA256 hashes (stdlib only).
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(20), default="viewer")  # admin | viewer
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

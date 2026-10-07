@@ -28,9 +28,16 @@ def _out(g: Game) -> dict:
 
 
 @router.get("", response_model=list[GameOut])
-def list_games(db: Session = Depends(get_db)):
+def list_games(db: Session = Depends(get_db), limit: int = 500, offset: int = 0):
+    limit = max(1, min(limit, 1000))
+    offset = max(0, offset)
     games = (
-        db.execute(select(Game).order_by(Game.played_at.desc(), Game.id.desc()))
+        db.execute(
+            select(Game)
+            .order_by(Game.played_at.desc(), Game.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         .scalars()
         .all()
     )

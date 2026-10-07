@@ -11,45 +11,54 @@ from ..services.ratings import compute_ratings
 router = APIRouter(prefix="/api/compare", tags=["compare"])
 
 
-def _summary(db: Session, player: Player, t_ratings: dict, f_ratings: dict) -> dict:
+def _tally(rows: list[tuple[int, int]], pid: int) -> tuple[int, int, int, int, int, int]:
+    played = won = drawn = lost = gf = ga = 0
+    for f, a in rows:
+        played += 1
+        gf += f
+        ga += a
+        if f > a:
+            won += 1
+        elif f < a:
+            lost += 1
+        else:
+            drawn += 1
+    return played, won, drawn, lost, gf, ga
+
+
+def _summary(
+    db: Session,
+    player: Player,
+    t_ratings: dict,
+    f_ratings: dict,
+    *,
+    t_rows: list | None = None,
+    f_rows: list | None = None,
+    titles: int = 0,
+) -> dict:
     pid = player.id
 
-    t_played = t_won = t_drawn = t_lost = t_gf = t_ga = 0
-    rows = db.execute(
-        select(Match)
-        .join(Tournament, Match.tournament_id == Tournament.id)
-        .where(Match.played.is_(True), or_(Match.home_id == pid, Match.away_id == pid))
-    ).scalars().all()
-    for m in rows:
-        home = m.home_id == pid
-        f, a = (m.home_score or 0, m.away_score or 0) if home else (m.away_score or 0, m.home_score or 0)
-        t_played += 1
-        t_gf += f
-        t_ga += a
-        if f > a:
-            t_won += 1
-        elif f < a:
-            t_lost += 1
-        else:
-            t_drawn += 1
+    if t_rows is None:
+        rows = db.execute(
+            select(Match)
+            .where(Match.played.is_(True), or_(Match.home_id == pid, Match.away_id == pid))
+        ).scalars().all()
+        t_rows = [
+            ((m.home_score or 0, m.away_score or 0) if m.home_id == pid else (m.away_score or 0, m.home_score or 0))
+            for m in rows
+        ]
+    if f_rows is None:
+        grows = db.execute(select(Game).where(or_(Game.home_id == pid, Game.away_id == pid))).scalars().all()
+        f_rows = [
+            ((g.home_score, g.away_score) if g.home_id == pid else (g.away_score, g.home_score))
+            for g in grows
+        ]
+        titles = db.execute(
+            select(func.count()).select_from(Tournament).where(Tournament.champion_id == pid)
+        ).scalar() or 0
 
-    titles = db.execute(
-        select(func.count()).select_from(Tournament).where(Tournament.champion_id == pid)
-    ).scalar() or 0
-
-    f_played = f_won = f_drawn = f_lost = f_gf = f_ga = 0
-    for g in db.execute(select(Game).where(or_(Game.home_id == pid, Game.away_id == pid))).scalars().all():
-        home = g.home_id == pid
-        f, a = (g.home_score, g.away_score) if home else (g.away_score, g.home_score)
-        f_played += 1
-        f_gf += f
-        f_ga += a
-        if f > a:
-            f_won += 1
-        elif f < a:
-            f_lost += 1
-        else:
-            f_drawn += 1
+    t_played, t_won, t_drawn, t_lost, t_gf, t_ga = _tally(t_rows, pid)
+    f_played, f_won, f_drawn, f_lost, f_gf, f_ga = _tally(f_rows, pid)
 
     tr = t_ratings.get(pid, {"elo": 1000, "rating": 50})
     fr = f_ratings.get(pid, {"elo": 1000, "rating": 50})
@@ -92,6 +101,54 @@ def compare(a: int = Query(...), b: int = Query(...), db: Session = Depends(get_
 
     t_ratings = compute_ratings(db, friendlies=False)
     f_ratings = compute_ratings(db, tournaments=False)
+
+    # Batch career rows for both players (2 queries instead of 4).
+    t_all = (
+        db.execute(
+            select(Match).where(
+                Match.played.is_(True),
+                or_(
+                    Match.home_id.in_([a, b]),
+                    Match.away_id.in_([a, b]),
+                ),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    f_all = (
+        db.execute(
+            select(Game).where(
+                or_(Game.home_id.in_([a, b]), Game.away_id.in_([a, b]))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    title_counts = dict(
+        db.execute(
+            select(Tournament.champion_id, func.count())
+            .where(Tournament.champion_id.in_([a, b]))
+            .group_by(Tournament.champion_id)
+        ).all()
+    )
+
+    def rows_for(pid: int):
+        t_rows = [
+            (
+                (m.home_score or 0, m.away_score or 0)
+                if m.home_id == pid
+                else (m.away_score or 0, m.home_score or 0)
+            )
+            for m in t_all
+            if m.home_id == pid or m.away_id == pid
+        ]
+        f_rows = [
+            ((g.home_score, g.away_score) if g.home_id == pid else (g.away_score, g.home_score))
+            for g in f_all
+            if g.home_id == pid or g.away_id == pid
+        ]
+        return t_rows, f_rows
 
     a_wins = b_wins = draws = a_goals = b_goals = 0
     matches: list[dict] = []
@@ -147,9 +204,17 @@ def compare(a: int = Query(...), b: int = Query(...), db: Session = Depends(get_
 
     matches.sort(key=lambda x: str(x["date"] or ""), reverse=True)
 
+    a_t, a_f = rows_for(a)
+    b_t, b_f = rows_for(b)
     return {
-        "a": _summary(db, pa, t_ratings, f_ratings),
-        "b": _summary(db, pb, t_ratings, f_ratings),
+        "a": _summary(
+            db, pa, t_ratings, f_ratings,
+            t_rows=a_t, f_rows=a_f, titles=title_counts.get(a, 0),
+        ),
+        "b": _summary(
+            db, pb, t_ratings, f_ratings,
+            t_rows=b_t, f_rows=b_f, titles=title_counts.get(b, 0),
+        ),
         "head_to_head": {
             "a_wins": a_wins,
             "b_wins": b_wins,

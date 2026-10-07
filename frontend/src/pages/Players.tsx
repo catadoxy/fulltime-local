@@ -1,22 +1,58 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
+import { ConfirmDialog, EmptyState, ErrorBanner, SortableTh } from '../components/ui'
 import type { Player } from '../types'
 
 export default function Players() {
+  const { canEdit } = useAuth()
   const [players, setPlayers] = useState<Player[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Player | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [sort, setSort] = useState<{ key: 'name' | 'rating' | 'tournaments'; dir: 'asc' | 'desc' }>({
     key: 'name',
     dir: 'asc',
   })
 
-  const load = () => api.players().then(setPlayers).catch((e) => setError(e.message))
+  // Debounce server search so typing doesn't spam the API.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => clearTimeout(t)
+  }, [query])
 
   useEffect(() => {
-    load()
-  }, [])
+    const ctrl = new AbortController()
+    setLoading(true)
+    setError('')
+    api
+      .players({ limit: 500, q: debouncedQuery || undefined }, ctrl.signal)
+      .then((data) => {
+        if (!ctrl.signal.aborted) setPlayers(data)
+      })
+      .catch((e) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false)
+      })
+    return () => ctrl.abort()
+  }, [debouncedQuery])
+
+  const reload = () => {
+    const ctrl = new AbortController()
+    setLoading(true)
+    api
+      .players({ limit: 500, q: debouncedQuery || undefined }, ctrl.signal)
+      .then(setPlayers)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
+  }
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
@@ -24,24 +60,32 @@ export default function Players() {
     try {
       await api.createPlayer({ name: name.trim() })
       setName('')
-      load()
-    } catch (err: any) {
-      setError(err.message)
+      reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     }
   }
 
-  async function remove(p: Player) {
-    if (!confirm(`Delete player "${p.name}"?`)) return
+  async function confirmRemove() {
+    if (!pendingDelete) return
+    setDeleting(true)
     try {
-      await api.deletePlayer(p.id)
-      load()
-    } catch (err: any) {
-      setError(err.message)
+      await api.deletePlayer(pendingDelete.id)
+      setPendingDelete(null)
+      reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDeleting(false)
     }
   }
 
-  function toggleSort(key: 'name' | 'rating' | 'tournaments') {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  function toggleSort(key: string) {
+    setSort((s) =>
+      s.key === key
+        ? { key: key as typeof s.key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+        : { key: key as typeof s.key, dir: 'asc' },
+    )
   }
 
   const sorted = useMemo(() => {
@@ -65,38 +109,68 @@ export default function Players() {
     })
   }, [players, sort])
 
-  const arrow = (key: string) =>
-    sort.key === key ? <span className="arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span> : null
-
   return (
     <div>
       <h1>Players</h1>
 
-      <form className="panel row" onSubmit={add}>
-        <div className="grow">
-          <label>Name</label>
-          <input className="grow" style={{ width: '100%' }} value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <button className="primary" type="submit" style={{ alignSelf: 'flex-end' }}>
-          Add player
-        </button>
-      </form>
-      {error && <div className="error">{error}</div>}
+      {canEdit && (
+        <form className="panel row" onSubmit={add}>
+          <div className="grow">
+            <label htmlFor="player-name">Name</label>
+            <input
+              id="player-name"
+              className="full"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              maxLength={120}
+            />
+          </div>
+          <button className="primary" type="submit" style={{ alignSelf: 'flex-end' }}>
+            Add player
+          </button>
+        </form>
+      )}
+      <ErrorBanner message={error} onRetry={reload} />
 
       <div className="panel">
-        <table>
+        <div className="toolbar">
+          <div className="search-field grow">
+            <label htmlFor="search-players-list">Search players</label>
+            <div className="row" style={{ gap: '0.4rem' }}>
+              <input
+                id="search-players-list"
+                type="search"
+                value={query}
+                placeholder="Name or real name…"
+                onChange={(e) => setQuery(e.target.value)}
+                className="full"
+              />
+              {query && (
+                <button type="button" className="btn" onClick={() => setQuery('')}>
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+          <span className="muted small" aria-live="polite">
+            {debouncedQuery ? `${sorted.length} match${sorted.length === 1 ? '' : 'es'}` : `${sorted.length} players`}
+            {loading ? ' · searching…' : ''}
+          </span>
+        </div>
+        <table className="players-table">
           <thead>
             <tr>
-              <th className="sortable" onClick={() => toggleSort('name')}>
-                Name {arrow('name')}
-              </th>
-              <th className="sortable" style={{ width: 90 }} onClick={() => toggleSort('rating')}>
-                Rating {arrow('rating')}
-              </th>
-              <th className="sortable" style={{ width: 130 }} onClick={() => toggleSort('tournaments')}>
-                Tournaments {arrow('tournaments')}
-              </th>
-              <th style={{ width: 90 }}></th>
+              <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+              <SortableTh label="Rating" sortKey="rating" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+              <SortableTh
+                label="Tournaments"
+                sortKey="tournaments"
+                activeKey={sort.key}
+                dir={sort.dir}
+                onToggle={toggleSort}
+              />
+              <th style={{ width: 90 }}>{canEdit ? '' : null}</th>
             </tr>
           </thead>
           <tbody>
@@ -113,29 +187,40 @@ export default function Players() {
                 </td>
                 <td>
                   <span className="badge">{p.tournaments ?? 0}</span>
-                  {!!p.titles && (
-                    <span className="badge done" style={{ marginLeft: 6 }}>
-                      🏆 {p.titles}
-                    </span>
-                  )}
+                  {!!p.titles && <span className="badge done titles-badge">🏆 {p.titles}</span>}
                 </td>
-                <td>
-                  <button className="danger" onClick={() => remove(p)}>
-                    Delete
-                  </button>
+                <td className="actions">
+                  {canEdit && (
+                    <button className="danger" onClick={() => setPendingDelete(p)}>
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
-            {players.length === 0 && (
-              <tr>
-                <td colSpan={4} className="muted">
-                  No players yet. Add some above, or import a legacy database.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+        {loading ? (
+          <p className="muted">Loading…</p>
+        ) : (
+          sorted.length === 0 && (
+            <EmptyState>
+              {debouncedQuery
+                ? `No players match “${debouncedQuery}”.`
+                : 'No players yet. Add some above, or import a legacy database.'}
+            </EmptyState>
+          )
+        )}
       </div>
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete player"
+          message={`Delete player "${pendingDelete.name}"? Only possible when they are not in any tournament.`}
+          onConfirm={confirmRemove}
+          onCancel={() => setPendingDelete(null)}
+          busy={deleting}
+        />
+      )}
     </div>
   )
 }

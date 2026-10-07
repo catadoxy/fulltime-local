@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../App'
+import { ErrorBanner, LoadingSkeleton } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { PlayerStats, TournamentFormat } from '../types'
 
@@ -33,22 +35,56 @@ function ResultBadge({ result }: { result: 'W' | 'D' | 'L' }) {
 }
 
 export default function PlayerDetail() {
+  const { canEdit } = useAuth()
   const { id } = useParams()
   const pid = Number(id)
+  const [search, setSearch] = useSearchParams()
+  const tab = search.get('tab') === 'friendlies' ? 'friendlies' : 'tournaments'
+  const setTab = (v: 'tournaments' | 'friendlies') => {
+    const next = new URLSearchParams(search)
+    next.set('tab', v)
+    setSearch(next, { replace: true })
+  }
   const [stats, setStats] = useState<PlayerStats | null>(null)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<'tournaments' | 'friendlies'>('tournaments')
+  const [loading, setLoading] = useState(true)
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [friendlyQuery, setFriendlyQuery] = useState('')
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [realDraft, setRealDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    api.playerStats(pid).then(setStats).catch((e) => setError(e.message))
+    api
+      .playerStats(pid)
+      .then(setStats)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
   }
-  useEffect(load, [pid])
+  useEffect(() => {
+    const ctrl = new AbortController()
+    setLoading(true)
+    api
+      .playerStats(pid, ctrl.signal)
+      .then((s) => {
+        if (!ctrl.signal.aborted) setStats(s)
+      })
+      .catch((e) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false)
+      })
+    return () => ctrl.abort()
+  }, [pid])
 
-  if (!stats) return <div className="panel">{error || 'Loading…'}</div>
+  if (loading && !stats) return <LoadingSkeleton rows={6} label="Loading player…" />
+  if (!stats)
+    return (
+      <div className="panel">
+        <ErrorBanner message={error || 'Player not found'} />
+      </div>
+    )
 
   const { player, rating, friendly_rating, tournaments: tr, friendlies: fr } = stats
 
@@ -62,8 +98,8 @@ export default function PlayerDetail() {
       })
       setEditing(false)
       load()
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setSaving(false)
     }
@@ -110,17 +146,19 @@ export default function PlayerDetail() {
             <>
               <h1 style={{ marginBottom: player.real_name ? 2 : 6 }}>
                 {player.name}{' '}
-                <button
-                  className="btn"
-                  style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
-                  onClick={() => {
-                    setNameDraft(player.name)
-                    setRealDraft(player.real_name ?? '')
-                    setEditing(true)
-                  }}
-                >
-                  ✎ Edit
-                </button>
+                {canEdit && (
+                  <button
+                    className="btn"
+                    style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
+                    onClick={() => {
+                      setNameDraft(player.name)
+                      setRealDraft(player.real_name ?? '')
+                      setEditing(true)
+                    }}
+                  >
+                    ✎ Edit
+                  </button>
+                )}
               </h1>
               {player.real_name && (
                 <div className="small muted" style={{ marginBottom: 4 }}>
@@ -151,11 +189,23 @@ export default function PlayerDetail() {
         </Link>
       </div>
 
-      <div className="tabs">
-        <button className={tab === 'tournaments' ? 'active' : ''} onClick={() => setTab('tournaments')}>
+      <ErrorBanner message={error} onRetry={load} />
+
+      <div className="tabs" role="tablist" aria-label="Player record">
+        <button
+          role="tab"
+          aria-selected={tab === 'tournaments'}
+          className={tab === 'tournaments' ? 'active' : ''}
+          onClick={() => setTab('tournaments')}
+        >
           Tournaments
         </button>
-        <button className={tab === 'friendlies' ? 'active' : ''} onClick={() => setTab('friendlies')}>
+        <button
+          role="tab"
+          aria-selected={tab === 'friendlies'}
+          className={tab === 'friendlies' ? 'active' : ''}
+          onClick={() => setTab('friendlies')}
+        >
           Friendlies
         </button>
       </div>
@@ -181,7 +231,21 @@ export default function PlayerDetail() {
           </div>
 
           <div className="panel">
-            <h3 style={{ marginTop: 0 }}>Tournament history</h3>
+            <div className="row between" style={{ marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>Tournament history</h3>
+              {tr.history.length > 3 && (
+                <div className="search-field" style={{ minWidth: 200 }}>
+                  <label htmlFor="history-search">Search history</label>
+                  <input
+                    id="history-search"
+                    type="search"
+                    value={historyQuery}
+                    placeholder="Tournament name…"
+                    onChange={(e) => setHistoryQuery(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
             <table>
               <thead>
                 <tr>
@@ -198,7 +262,13 @@ export default function PlayerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {tr.history.map((h) => (
+                {tr.history
+                  .filter((h) =>
+                    historyQuery.trim()
+                      ? h.name.toLowerCase().includes(historyQuery.trim().toLowerCase())
+                      : true,
+                  )
+                  .map((h) => (
                   <tr key={h.tournament_id}>
                     <td>
                       <Link to={`/t/${h.tournament_id}`}>{h.name}</Link>
@@ -229,6 +299,17 @@ export default function PlayerDetail() {
                     </td>
                   </tr>
                 )}
+                {tr.history.length > 0 &&
+                  historyQuery.trim() &&
+                  tr.history.filter((h) =>
+                    h.name.toLowerCase().includes(historyQuery.trim().toLowerCase()),
+                  ).length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="muted">
+                        No tournaments match “{historyQuery.trim()}”.
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
@@ -252,7 +333,21 @@ export default function PlayerDetail() {
           </div>
 
           <div className="panel">
-            <h3 style={{ marginTop: 0 }}>Friendly results</h3>
+            <div className="row between" style={{ marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>Friendly results</h3>
+              {fr.matches.length > 3 && (
+                <div className="search-field" style={{ minWidth: 200 }}>
+                  <label htmlFor="friendly-search">Search friendlies</label>
+                  <input
+                    id="friendly-search"
+                    type="search"
+                    value={friendlyQuery}
+                    placeholder="Opponent or note…"
+                    onChange={(e) => setFriendlyQuery(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
             <table>
               <thead>
                 <tr>
@@ -265,7 +360,15 @@ export default function PlayerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {fr.matches.map((m) => (
+                {fr.matches
+                  .filter((m) =>
+                    friendlyQuery.trim()
+                      ? `${m.opponent_name} ${m.note ?? ''}`
+                          .toLowerCase()
+                          .includes(friendlyQuery.trim().toLowerCase())
+                      : true,
+                  )
+                  .map((m) => (
                   <tr key={m.id}>
                     <td className="muted small">{m.played_at}</td>
                     <td>
