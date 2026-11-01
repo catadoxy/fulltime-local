@@ -567,6 +567,34 @@ th.num .th-button { margin-left: auto; }
   .match-gutter { display: none; }
 }
 
+/* ---- Charts ---- */
+.chart-wrap { position: relative; }
+.trend-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.chart-axis { fill: var(--muted); font-size: 10px; font-family: var(--font-body); }
+.chart-area { opacity: 0.12; }
+.chart-dot { transition: r 0.12s ease; }
+.chart-guide { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-legend { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.4rem; font-size: 0.82rem; }
+.chart-key { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted); }
+.chart-swatch { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.chart-tooltip {
+  position: absolute; top: 6px; transform: translateX(-50%);
+  background: var(--surface-3); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm); padding: 0.45rem 0.6rem;
+  font-size: 0.8rem; pointer-events: none; min-width: 150px; z-index: 2;
+  box-shadow: var(--shadow);
+}
+.chart-tooltip-date { display: flex; align-items: center; gap: 0.4rem; font-weight: 650; margin-bottom: 0.15rem; }
+.chart-tooltip-values { display: flex; flex-direction: column; gap: 0.1rem; margin-top: 0.25rem; }
+.chart-tooltip-values span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.chart-empty { padding: 2rem 0; text-align: center; }
+
+.segmented { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); overflow: hidden; }
+.segmented button { border: 0; border-radius: 0; background: transparent; color: var(--muted); padding: 0.32rem 0.7rem; font-size: 0.82rem; }
+.segmented button + button { border-left: 1px solid var(--line); }
+.segmented button.active { background: var(--floodlight); color: var(--floodlight-ink); font-weight: 650; }
+
 /* ---- Motion ---- */
 @media (prefers-reduced-motion: reduce) {
   *,

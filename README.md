@@ -18,6 +18,7 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Player profiles** — nickname + real name, plus separate tournament and
   friendly tabs.
 - **Compare** any two players (head-to-head and side-by-side).
+- **Form charts** — Elo, rating and cumulative goals over time on each player profile.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; 4 colour themes.
 - **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
