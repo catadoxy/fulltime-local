@@ -81,9 +81,20 @@ export interface TournamentEstimate {
   changeover_minutes: number
   slot_minutes: number
   matches: number
+  played_matches: number
+  remaining_matches: number
   slots: number
+  remaining_slots: number
   minutes: number
-  rounds: { stage: string; round: number; matches: number; slots: number }[]
+  remaining_minutes: number
+  rounds: {
+    stage: string
+    round: number
+    matches: number
+    slots: number
+    remaining_matches: number
+    remaining_slots: number
+  }[]
 }
 
 export interface Match {
