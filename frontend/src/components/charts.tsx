@@ -65,6 +65,9 @@ export function TrendChart({
   if (n === 0) {
     return <div className="chart-empty muted small">{emptyLabel}</div>
   }
+  if (n === 1) {
+    return <div className="chart-empty muted small">Only one match so far — play another to see a trend.</div>
+  }
 
   const fmt = (v: number) =>
     Number.isInteger(v) ? String(Math.round(v)) : v.toFixed(1)
@@ -143,20 +146,28 @@ export function TrendChart({
             />
           )}
 
-          {/* x labels: first, middle, last */}
-          {[0, Math.floor((n - 1) / 2), n - 1]
-            .filter((v, i, arr) => arr.indexOf(v) === i)
-            .map((i) => (
-              <text
-                key={i}
-                x={xAt(i)}
-                y={innerH + 18}
-                className="chart-axis"
-                textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}
-              >
-                {points[i]?.axisLabel ?? points[i]?.label ?? ''}
-              </text>
-            ))}
+          {/* x labels: first, middle, last — skip repeated dates */}
+          {(() => {
+            const seen = new Set<string>()
+            return [0, Math.floor((n - 1) / 2), n - 1]
+              .filter((v, i, arr) => arr.indexOf(v) === i)
+              .map((i) => {
+                const text = points[i]?.axisLabel ?? points[i]?.label ?? ''
+                if (seen.has(text)) return null
+                seen.add(text)
+                return (
+                  <text
+                    key={i}
+                    x={xAt(i)}
+                    y={innerH + 18}
+                    className="chart-axis"
+                    textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}
+                  >
+                    {text}
+                  </text>
+                )
+              })
+          })()}
         </g>
       </svg>
 
