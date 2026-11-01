@@ -64,6 +64,8 @@ export interface Tournament {
   settings: TournamentSettings
   start_date: string | null
   end_date: string | null
+  started_at?: string | null
+  finished_at?: string | null
   champion_id: number | null
   created_at: string
 }
@@ -71,6 +73,17 @@ export interface Tournament {
 export interface TournamentDetail extends Tournament {
   groups: Group[]
   participants: Participant[]
+  estimate?: TournamentEstimate
+}
+
+export interface TournamentEstimate {
+  match_minutes: number
+  changeover_minutes: number
+  slot_minutes: number
+  matches: number
+  slots: number
+  minutes: number
+  rounds: { stage: string; round: number; matches: number; slots: number }[]
 }
 
 export interface Match {
@@ -117,6 +130,10 @@ export interface Table {
 export interface Meta {
   formats: { id: TournamentFormat; label: string }[]
   default_settings: Record<string, TournamentSettings>
+  calibration?: {
+    samples: number
+    median_slot_minutes: number | null
+  }
 }
 
 export interface PlayerTotals {

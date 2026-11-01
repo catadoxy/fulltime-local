@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
-import { ConfirmDialog, ErrorBanner, LoadingSkeleton } from '../components/ui'
+import { ConfirmDialog, ErrorBanner, LoadingSkeleton, formatDuration, parseTimestamp } from '../components/ui'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
 const KNOCKOUT_ORDER = ['r64', 'r32', 'r16', 'qf', 'sf', 'third', 'final']
@@ -40,6 +40,13 @@ export default function TournamentDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!t?.started_at || t.status === 'completed') return
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [t?.started_at, t?.status])
 
   const load = async (signal?: AbortSignal) => {
     try {
@@ -143,6 +150,13 @@ export default function TournamentDetail() {
 
   if (!t) return <div className="panel">{error || 'Loading…'}</div>
 
+  const startedAt = parseTimestamp(t.started_at)
+  const finishedAt = parseTimestamp(t.finished_at)
+  const elapsedMinutes = startedAt
+    ? Math.max(0, Math.round(((finishedAt?.getTime() ?? now) - startedAt.getTime()) / 60000))
+    : null
+  const elapsedLabel = elapsedMinutes === 0 ? '<1m' : formatDuration(elapsedMinutes ?? 0)
+
   return (
     <div>
       <div className="row between page-head">
@@ -218,6 +232,34 @@ export default function TournamentDetail() {
                 <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
                 <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
                 <span className="muted">{t.nb_pitches} pitch(es)</span>
+                {t.status === 'active' && t.estimate && t.estimate.minutes > 0 && (
+                  <span
+                    className="badge"
+                    title={`${t.estimate.slots} slot(s) × ${t.estimate.slot_minutes} min = ${t.estimate.minutes} min (${t.estimate.match_minutes} min match + ${t.estimate.changeover_minutes} min changeover)`}
+                  >
+                    ≈ {formatDuration(t.estimate.minutes)}
+                  </span>
+                )}
+                {elapsedMinutes != null && (
+                  <span
+                    className="badge"
+                    title={
+                      startedAt
+                        ? `Started ${startedAt.toLocaleString()}${finishedAt ? ` · finished ${finishedAt.toLocaleString()}` : ''}`
+                        : undefined
+                    }
+                  >
+                    {t.status === 'completed' ? `Took ${elapsedLabel}` : `${elapsedLabel} elapsed`}
+                  </span>
+                )}
+                {t.status === 'completed' &&
+                  elapsedMinutes != null &&
+                  t.estimate &&
+                  t.estimate.minutes > 0 && (
+                    <span className="muted small">
+                      planned {formatDuration(t.estimate.minutes)}
+                    </span>
+                  )}
                 {champion && <span className="badge done">🏆 {champion}</span>}
               </div>
             </>
@@ -238,6 +280,15 @@ export default function TournamentDetail() {
               Delete
             </button>
           )}
+          <Link
+            className="btn"
+            to={`/tv/${t.id}`}
+            target="_blank"
+            rel="noreferrer"
+            title="Open the big-screen view for the venue"
+          >
+            TV
+          </Link>
           <Link className="btn" to="/tournaments">
             ← All tournaments
           </Link>

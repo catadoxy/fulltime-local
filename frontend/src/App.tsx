@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { api } from './api'
 import Tournaments from './pages/Tournaments'
 import TournamentDetail from './pages/TournamentDetail'
+import TvMode from './pages/TvMode'
 import Players from './pages/Players'
 import PlayerDetail from './pages/PlayerDetail'
 import Friendlies from './pages/Friendlies'
@@ -53,6 +54,8 @@ function BrandMark() {
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) ?? 'floodlights')
   const [auth, setAuth] = useState<AuthState | null>(null)
+  const location = useLocation()
+  const isTv = location.pathname.startsWith('/tv/')
 
   const refresh = () => {
     api
@@ -98,7 +101,7 @@ export default function App() {
 
   return (
     <AuthCtx.Provider value={{ auth, canEdit, refresh }}>
-      <div className="app">
+      <div className={`app${isTv ? ' tv-mode' : ''}`}>
         <a className="skip-link" href="#main">
           Skip to content
         </a>
@@ -151,6 +154,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/tournaments" replace />} />
             <Route path="/tournaments" element={<Tournaments />} />
             <Route path="/t/:id" element={<TournamentDetail />} />
+            <Route path="/tv/:id" element={<TvMode />} />
             <Route path="/players" element={<Players />} />
             <Route path="/players/:id" element={<PlayerDetail />} />
             <Route path="/friendlies" element={<Friendlies />} />
