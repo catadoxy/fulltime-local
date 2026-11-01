@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
+import { formatDuration, parseTimestamp } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
@@ -27,14 +28,6 @@ type Panel = { key: string; title: string; body: ReactNode }
 
 function stagesOf(m: Match) {
   return KNOCKOUT_ORDER.includes(m.stage)
-}
-
-function formatDuration(minutes: number): string {
-  if (!minutes || minutes <= 0) return '—'
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  if (!h) return `${m}m`
-  return m ? `${h}h ${m}m` : `${h}h`
 }
 
 function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
@@ -320,6 +313,12 @@ export default function TvMode() {
 
   const panel = panels[index] ?? null
   const estimate = t.estimate
+  const startedAt = parseTimestamp(t.started_at)
+  const finishedAt = parseTimestamp(t.finished_at)
+  const elapsedMinutes = startedAt
+    ? Math.max(0, Math.round(((finishedAt?.getTime() ?? clock.getTime()) - startedAt.getTime()) / 60000))
+    : null
+  const elapsedLabel = elapsedMinutes === 0 ? '<1m' : formatDuration(elapsedMinutes ?? 0)
 
   return (
     <div className="tv">
@@ -332,6 +331,11 @@ export default function TvMode() {
             {t.nb_pitches > 1 ? ` · ${t.nb_pitches} pitches` : ''}
             {estimate && estimate.minutes > 0
               ? ` · about ${formatDuration(estimate.minutes)}`
+              : ''}
+            {elapsedMinutes != null
+              ? t.status === 'completed'
+                ? ` · finished in ${elapsedLabel}`
+                : ` · ${elapsedLabel} elapsed`
               : ''}
           </div>
         </div>

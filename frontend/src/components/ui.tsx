@@ -10,6 +10,22 @@ export function formatDate(value: string | null | undefined): string {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+/** Parse a server timestamp; SQLite returns naive UTC strings. */
+export function parseTimestamp(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const hasTz = /[zZ]|[+-]\d\d:?\d\d$/.test(value)
+  const d = new Date(hasTz ? value : `${value}Z`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+export function formatDuration(minutes: number): string {
+  if (!minutes || minutes <= 0) return '—'
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (!h) return `${m}m`
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   if (!message) return null
   return (

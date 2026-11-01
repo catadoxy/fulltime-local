@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
@@ -26,6 +26,11 @@ export default function Tournaments() {
   const [nbPitches, setNbPitches] = useState(1)
   const [matchMinutes, setMatchMinutes] = useState(10)
   const [changeoverMinutes, setChangeoverMinutes] = useState(5)
+  const [calibration, setCalibration] = useState<{
+    samples: number
+    median_slot_minutes: number
+  } | null>(null)
+  const timeTouchedRef = useRef(false)
   const [selected, setSelected] = useState<number[]>([])
   const [settings, setSettings] = useState<TournamentSettings>({})
   const [submitting, setSubmitting] = useState(false)
@@ -36,11 +41,26 @@ export default function Tournaments() {
   useEffect(() => {
     const ctrl = new AbortController()
     setLoading(true)
-    Promise.all([api.tournaments(undefined, ctrl.signal), api.players(undefined, ctrl.signal)])
-      .then(([ts, ps]) => {
-        if (!ctrl.signal.aborted) {
-          setTournaments(ts)
-          setPlayers(ps)
+    Promise.all([
+      api.tournaments(undefined, ctrl.signal),
+      api.players(undefined, ctrl.signal),
+      api.meta(ctrl.signal),
+    ])
+      .then(([ts, ps, meta]) => {
+        if (ctrl.signal.aborted) return
+        setTournaments(ts)
+        setPlayers(ps)
+        const cal = meta.calibration
+        if (cal && cal.samples >= 2 && cal.median_slot_minutes) {
+          setCalibration({
+            samples: cal.samples,
+            median_slot_minutes: cal.median_slot_minutes,
+          })
+          // Pre-fill the changeover from how long slots really took, unless
+          // the form was already edited.
+          if (!timeTouchedRef.current) {
+            setChangeoverMinutes(Math.max(0, Math.round(cal.median_slot_minutes) - 10))
+          }
         }
       })
       .catch((e) => {
@@ -231,7 +251,10 @@ export default function Tournaments() {
                 min={1}
                 max={600}
                 value={matchMinutes}
-                onChange={(e) => setMatchMinutes(Number(e.target.value))}
+                onChange={(e) => {
+                  timeTouchedRef.current = true
+                  setMatchMinutes(Number(e.target.value))
+                }}
                 className="num-input"
                 title="How long one match is expected to take"
               />
@@ -244,12 +267,23 @@ export default function Tournaments() {
                 min={0}
                 max={120}
                 value={changeoverMinutes}
-                onChange={(e) => setChangeoverMinutes(Number(e.target.value))}
+                onChange={(e) => {
+                  timeTouchedRef.current = true
+                  setChangeoverMinutes(Number(e.target.value))
+                }}
                 className="num-input"
                 title="Extra time between matches (teams swapping, setup…)"
               />
             </div>
           </div>
+
+          {calibration && (
+            <p className="muted small" style={{ marginTop: '-0.35rem' }}>
+              Defaults use {calibration.samples} completed event
+              {calibration.samples === 1 ? '' : 's'}: about {calibration.median_slot_minutes} min per
+              slot.
+            </p>
+          )}
 
           <FormatSettings format={format} settings={settings} setSettings={setSettings} />
 

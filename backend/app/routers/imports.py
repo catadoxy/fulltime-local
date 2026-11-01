@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..config import DATABASE_URL
 from ..database import engine, get_db
 from ..models import Game, Group, Match, Participant, Player, Tournament
+from ..services.estimate import slot_calibration
 from ..services.fixtures import default_settings
 from ..legacy_import import import_legacy
 
@@ -26,10 +27,11 @@ FORMATS = [
 
 
 @router.get("/meta")
-def meta():
+def meta(db: Session = Depends(get_db)):
     return {
         "formats": FORMATS,
         "default_settings": {f["id"]: default_settings(f["id"]) for f in FORMATS},
+        "calibration": slot_calibration(db),
     }
 
 

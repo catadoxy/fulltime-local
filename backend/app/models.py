@@ -47,6 +47,9 @@ class Tournament(Base):
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
     start_date: Mapped[date | None] = mapped_column(Date, default=None)
     end_date: Mapped[date | None] = mapped_column(Date, default=None)
+    # Actual wall-clock timestamps (set from the first result / on completion).
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     champion_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 

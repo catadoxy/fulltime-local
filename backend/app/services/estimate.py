@@ -14,6 +14,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from ..models import Match, Tournament
 
 DEFAULT_MATCH_MINUTES = 10
@@ -107,3 +110,47 @@ def estimate_tournament(t: Tournament) -> dict:
         "minutes": slots * slot_length,
         "rounds": rounds,
     }
+
+
+def slot_calibration(db: Session) -> dict:
+    """Median real minutes per slot from fully-played, timed tournaments.
+
+    Used to pre-fill the changeover on new tournaments so estimates get
+    closer to reality once a few events have been run.
+    """
+    tours = (
+        db.execute(
+            select(Tournament).where(
+                Tournament.started_at.is_not(None),
+                Tournament.finished_at.is_not(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    samples: list[float] = []
+    for t in tours:
+        if not t.started_at or not t.finished_at:
+            continue
+        # Ignore events closed early with unplayed fixtures.
+        if any((not m.played) and not _is_bye(m) for m in t.matches):
+            continue
+        estimate = estimate_tournament(t)
+        if estimate["slots"] <= 0:
+            continue
+        minutes = (t.finished_at - t.started_at).total_seconds() / 60
+        if minutes <= 0:
+            continue
+        per_slot = minutes / estimate["slots"]
+        if 0.5 <= per_slot <= 240:
+            samples.append(per_slot)
+
+    if len(samples) < 2:
+        return {"samples": len(samples), "median_slot_minutes": None}
+
+    samples.sort()
+    n = len(samples)
+    middle = samples[n // 2] if n % 2 else (samples[n // 2 - 1] + samples[n // 2]) / 2
+    return {"samples": n, "median_slot_minutes": round(middle, 1)}
+

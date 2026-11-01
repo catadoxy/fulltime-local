@@ -48,6 +48,11 @@ def _migrate() -> None:
         pcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(players)")}
         if pcols and "real_name" not in pcols:
             conn.exec_driver_sql("ALTER TABLE players ADD COLUMN real_name VARCHAR(120)")
+        tcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(tournaments)")}
+        if tcols and "started_at" not in tcols:
+            conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN started_at DATETIME")
+        if tcols and "finished_at" not in tcols:
+            conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN finished_at DATETIME")
 
 
 @app.get("/api/health")

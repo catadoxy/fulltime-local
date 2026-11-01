@@ -1,12 +1,16 @@
 """Result entry, knockout progression, and stage-completion triggers."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import Match, Tournament
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 KNOCKOUT_STAGES = {"r64", "r32", "r16", "qf", "sf", "third", "final"}
 TABLE_STAGES = {"league", "league_phase", "group", "swiss"}
@@ -89,6 +93,9 @@ def set_result(db: Session, m: Match, payload) -> Match:
 
     m.played = True
     m.winner_id = winner
+    # The first result marks the real-world start of the event.
+    if t.started_at is None and t.status != "completed":
+        t.started_at = _now()
     if winner is not None:
         propagate(db, t, m, winner)
 
@@ -150,10 +157,12 @@ def clear_result(db: Session, m: Match) -> Match:
         t.champion_id = None
         t.status = "active"
         t.end_date = None
+        t.finished_at = None
     elif t.status == "completed":
         # Clearing any result re-opens the tournament.
         t.status = "active"
         t.end_date = None
+        t.finished_at = None
     m.played = False
     m.home_score = None
     m.away_score = None
@@ -161,6 +170,21 @@ def clear_result(db: Session, m: Match) -> Match:
     m.away_pen = None
     m.winner_id = None
     db.flush()
+
+    # If everything is cleared, the event hasn't actually started yet.
+    # Byes are auto-played, so they don't count as real results.
+    still_played = db.execute(
+        select(Match.id)
+        .where(
+            Match.tournament_id == t.id,
+            Match.played.is_(True),
+            func.coalesce(Match.note, "").notlike("%(bye)%"),
+        )
+        .limit(1)
+    ).first()
+    if still_played is None:
+        t.started_at = None
+
     db.commit()
     db.refresh(m)
     return m
@@ -214,6 +238,8 @@ def _maybe_complete(db: Session, t: Tournament) -> None:
     t.status = "completed"
     if t.end_date is None:
         t.end_date = date.today()
+    if t.finished_at is None:
+        t.finished_at = _now()
     db.flush()
 
 
@@ -284,6 +310,8 @@ def close_tournament(db: Session, t: Tournament) -> Tournament:
     t.status = "completed"
     if t.end_date is None:
         t.end_date = date.today()
+    if t.finished_at is None:
+        t.finished_at = _now()
     db.commit()
     db.refresh(t)
     return t
