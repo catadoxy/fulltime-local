@@ -99,7 +99,7 @@ export default function Friendlies() {
       </div>
 
       {canEdit && (
-        <form className="panel" onSubmit={add}>
+        <form className="panel friendly-form" onSubmit={add}>
         <div className="row" style={{ alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div>
             <label htmlFor="fr-home">Home</label>

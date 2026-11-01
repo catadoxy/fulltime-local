@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
 import { TrendChart } from '../components/charts'
-import { ErrorBanner, LoadingSkeleton } from '../components/ui'
+import { ErrorBanner, LoadingSkeleton, TableWrap } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { PlayerStats, PlayerTimeline, TimelinePoint, TournamentFormat } from '../types'
 
@@ -342,10 +342,11 @@ export default function PlayerDetail() {
                 </div>
               )}
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Tournament</th>
+            <TableWrap size="wide">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Tournament</th>
                   <th>Date</th>
                   <th>Format</th>
                   <th className="num">P</th>
@@ -407,7 +408,8 @@ export default function PlayerDetail() {
                     </tr>
                   )}
               </tbody>
-            </table>
+              </table>
+            </TableWrap>
           </div>
         </div>
       ) : (
@@ -448,17 +450,18 @@ export default function PlayerDetail() {
                 </div>
               )}
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Opponent</th>
-                  <th>Side</th>
-                  <th className="num">Score</th>
-                  <th>Result</th>
-                  <th>Note</th>
-                </tr>
-              </thead>
+            <TableWrap size="comfortable">
+              <table className="friendlies-history-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Opponent</th>
+                    <th>Side</th>
+                    <th className="num">Score</th>
+                    <th>Result</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
               <tbody>
                 {fr.matches
                   .filter((m) =>
@@ -496,7 +499,8 @@ export default function PlayerDetail() {
                   </tr>
                 )}
               </tbody>
-            </table>
+              </table>
+            </TableWrap>
           </div>
         </div>
       )}

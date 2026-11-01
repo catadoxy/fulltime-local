@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
-import { ConfirmDialog, EmptyState, ErrorBanner } from '../components/ui'
+import { ConfirmDialog, EmptyState, ErrorBanner, TableWrap } from '../components/ui'
 
 interface AppUser {
   id: number
@@ -122,14 +122,15 @@ export default function Users() {
       <ErrorBanner message={error} onRetry={() => load()} />
 
       <div className="panel">
-        <table>
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Role</th>
-              <th style={{ width: 90 }}></th>
-            </tr>
-          </thead>
+        <TableWrap>
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th style={{ width: 90 }}></th>
+              </tr>
+            </thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
@@ -145,7 +146,8 @@ export default function Users() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </TableWrap>
         {loading ? (
           <p className="muted">Loading…</p>
         ) : (
