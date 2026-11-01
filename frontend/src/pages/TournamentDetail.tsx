@@ -22,6 +22,14 @@ const STAGE_LABELS: Record<string, string> = {
 }
 const isKnockout = (stage: string) => KNOCKOUT_ORDER.includes(stage)
 
+function formatDuration(minutes: number): string {
+  if (!minutes || minutes <= 0) return '—'
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (!h) return `${m}m`
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+
 export default function TournamentDetail() {
   const { id } = useParams()
   const tid = Number(id)
@@ -218,6 +226,14 @@ export default function TournamentDetail() {
                 <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
                 <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
                 <span className="muted">{t.nb_pitches} pitch(es)</span>
+                {t.estimate && t.estimate.minutes > 0 && (
+                  <span
+                    className="badge"
+                    title={`${t.estimate.slots} slot(s) × ${t.estimate.slot_minutes} min = ${t.estimate.minutes} min (${t.estimate.match_minutes} min match + ${t.estimate.changeover_minutes} min changeover)`}
+                  >
+                    ≈ {formatDuration(t.estimate.minutes)}
+                  </span>
+                )}
                 {champion && <span className="badge done">🏆 {champion}</span>}
               </div>
             </>
@@ -238,6 +254,15 @@ export default function TournamentDetail() {
               Delete
             </button>
           )}
+          <Link
+            className="btn"
+            to={`/tv/${t.id}`}
+            target="_blank"
+            rel="noreferrer"
+            title="Open the big-screen view for the venue"
+          >
+            TV
+          </Link>
           <Link className="btn" to="/tournaments">
             ← All tournaments
           </Link>

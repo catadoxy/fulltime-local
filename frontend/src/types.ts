@@ -71,6 +71,17 @@ export interface Tournament {
 export interface TournamentDetail extends Tournament {
   groups: Group[]
   participants: Participant[]
+  estimate?: TournamentEstimate
+}
+
+export interface TournamentEstimate {
+  match_minutes: number
+  changeover_minutes: number
+  slot_minutes: number
+  matches: number
+  slots: number
+  minutes: number
+  rounds: { stage: string; round: number; matches: number; slots: number }[]
 }
 
 export interface Match {

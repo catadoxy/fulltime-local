@@ -24,6 +24,8 @@ export default function Tournaments() {
   const [startDate, setStartDate] = useState('')
   const [format, setFormat] = useState<TournamentFormat>('league')
   const [nbPitches, setNbPitches] = useState(1)
+  const [matchMinutes, setMatchMinutes] = useState(10)
+  const [changeoverMinutes, setChangeoverMinutes] = useState(5)
   const [selected, setSelected] = useState<number[]>([])
   const [settings, setSettings] = useState<TournamentSettings>({})
   const [submitting, setSubmitting] = useState(false)
@@ -74,7 +76,11 @@ export default function Tournaments() {
         format,
         player_ids: selected,
         nb_pitches: nbPitches,
-        settings,
+        settings: {
+          ...settings,
+          match_minutes: matchMinutes,
+          changeover_minutes: changeoverMinutes,
+        },
       })
       navigate(`/t/${t.id}`)
     } catch (err) {
@@ -215,6 +221,32 @@ export default function Tournaments() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-match-len">Match length (min)</label>
+              <input
+                id="new-match-len"
+                type="number"
+                min={1}
+                max={600}
+                value={matchMinutes}
+                onChange={(e) => setMatchMinutes(Number(e.target.value))}
+                className="num-input"
+                title="How long one match is expected to take"
+              />
+            </div>
+            <div>
+              <label htmlFor="new-changeover">Changeover (min)</label>
+              <input
+                id="new-changeover"
+                type="number"
+                min={0}
+                max={120}
+                value={changeoverMinutes}
+                onChange={(e) => setChangeoverMinutes(Number(e.target.value))}
+                className="num-input"
+                title="Extra time between matches (teams swapping, setup…)"
               />
             </div>
           </div>

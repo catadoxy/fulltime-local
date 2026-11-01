@@ -12,13 +12,21 @@ from ..engine import round_robin as rr
 from ..engine import scheduling
 from ..engine import swiss as swiss_engine
 from ..models import Group, Match, Participant, Player, Tournament
+from .estimate import changeover_minutes, match_minutes
 
 KNOCKOUT_STAGES = {"r64", "r32", "r16", "qf", "sf", "third", "final"}
 TABLE_STAGES = {"league", "league_phase", "group", "swiss"}
 
 
 def default_settings(fmt: str) -> dict[str, Any]:
-    base: dict[str, Any] = {"points_win": 3, "points_draw": 1, "points_loss": 0}
+    base: dict[str, Any] = {
+        "points_win": 3,
+        "points_draw": 1,
+        "points_loss": 0,
+        # Wall-clock planning: one match + a changeover per slot.
+        "match_minutes": 10,
+        "changeover_minutes": 5,
+    }
     if fmt == "league":
         return {**base, "double_round": False}
     if fmt == "knockout":
@@ -69,6 +77,9 @@ def create_tournament(db: Session, data) -> Tournament:
 
     fmt = data.format
     settings = {**default_settings(fmt), **(data.settings or {})}
+    # Keep the time plan within sane bounds whatever the client sends.
+    settings["match_minutes"] = match_minutes(settings)
+    settings["changeover_minutes"] = changeover_minutes(settings)
 
     tournament = Tournament(
         name=data.name,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .models import Match, Participant, Tournament
+from .services.estimate import estimate_tournament
 
 
 def match_out(m: Match) -> dict:
@@ -66,4 +67,5 @@ def tournament_out(t: Tournament, detail: bool = False) -> dict:
             {"id": g.id, "name": g.name, "sort_order": g.sort_order} for g in t.groups
         ]
         data["participants"] = [participant_out(p) for p in t.participants]
+        data["estimate"] = estimate_tournament(t)
     return data

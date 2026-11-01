@@ -21,6 +21,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Form charts** — Elo, rating and cumulative goals over time on each player profile.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; 4 colour themes.
+- **TV mode** — a big-screen view that cycles standings, fixtures, brackets and results.
+- **Time estimate** — set match length + changeover and see how long the event will take.
 - **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
   require login. Admins can do everything, viewers are read-only.
 - **Import** a legacy SQLite database.
@@ -39,6 +41,8 @@ _Screenshots use mock data._
 | Player profile (tournaments / friendlies tabs) | Compare two players |
 | ![Friendlies](docs/screenshots/friendlies.png) | ![Player friendlies](docs/screenshots/player-friendlies.png) |
 | Recording friendlies | A player's friendly record |
+| ![TV mode](docs/screenshots/tv.png) | |
+| TV mode for the venue screen | |
 
 ---
 
