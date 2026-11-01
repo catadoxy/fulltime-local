@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Game, Match, Participant, Player, Tournament
 from ..schemas import PlayerCreate, PlayerOut, PlayerUpdate
-from ..services.ratings import compute_ratings
+from ..services.ratings import compute_ratings, player_timeline
 from ..services.standings import standings
 
 router = APIRouter(prefix="/api/players", tags=["players"])
@@ -248,6 +248,15 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
         "tournaments": {"totals": t_totals, "history": history},
         "friendlies": {"totals": f_totals, "matches": f_matches},
     }
+
+
+@router.get("/{player_id}/timeline")
+def player_timeline_endpoint(player_id: int, db: Session = Depends(get_db)):
+    """Per-match Elo / rating / goal history for the profile charts."""
+    player = db.get(Player, player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+    return player_timeline(db, player_id)
 
 
 def _rank_in_tournament(db: Session, t: Tournament, player_id: int) -> int | None:

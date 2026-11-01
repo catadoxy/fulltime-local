@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
+import { TrendChart } from '../components/charts'
 import { ErrorBanner, LoadingSkeleton } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
-import type { PlayerStats, TournamentFormat } from '../types'
+import type { PlayerStats, PlayerTimeline, TimelinePoint, TournamentFormat } from '../types'
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -34,6 +35,63 @@ function ResultBadge({ result }: { result: 'W' | 'D' | 'L' }) {
   return <span className={cls}>{label}</span>
 }
 
+function shortDate(value: string | null): string {
+  if (!value) return '—'
+  const d = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
+
+function FormCharts({ points }: { points: TimelinePoint[] }) {
+  const [metric, setMetric] = useState<'elo' | 'rating' | 'goals'>('elo')
+
+  const meta = points.map((p) => ({
+    label: `${shortDate(p.date)} · ${p.opponent_name}`,
+    axisLabel: shortDate(p.date),
+    detail: p.competition,
+    result: p.result,
+  }))
+
+  const series =
+    metric === 'elo'
+      ? [{ name: 'Elo', color: 'var(--floodlight)', values: points.map((p) => p.elo) }]
+      : metric === 'rating'
+        ? [{ name: 'Rating', color: 'var(--amber)', values: points.map((p) => p.rating) }]
+        : [
+            { name: 'Goals for', color: 'var(--grass)', values: points.map((p) => p.cumulative_goals_for) },
+            { name: 'Goals against', color: 'var(--red)', values: points.map((p) => p.cumulative_goals_against) },
+          ]
+
+  return (
+    <div className="panel">
+      <div className="row between" style={{ marginBottom: '0.25rem' }}>
+        <h3 style={{ margin: 0 }}>Form over time</h3>
+        <div className="segmented" role="group" aria-label="Chart metric">
+          {(['elo', 'rating', 'goals'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={metric === m ? 'active' : ''}
+              aria-pressed={metric === m}
+              onClick={() => setMetric(m)}
+            >
+              {m === 'elo' ? 'Elo' : m === 'rating' ? 'Rating' : 'Goals'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        {metric === 'goals' ? 'Cumulative goals across matches.' : `Match-by-match ${metric}.`}
+      </p>
+      <TrendChart
+        series={series}
+        points={meta}
+        emptyLabel="No matches recorded yet — play one to start the chart."
+      />
+    </div>
+  )
+}
+
 export default function PlayerDetail() {
   const { canEdit } = useAuth()
   const { id } = useParams()
@@ -46,6 +104,8 @@ export default function PlayerDetail() {
     setSearch(next, { replace: true })
   }
   const [stats, setStats] = useState<PlayerStats | null>(null)
+  const [timeline, setTimeline] = useState<PlayerTimeline | null>(null)
+  const [metric, setMetric] = useState<'elo' | 'rating' | 'goals'>('elo')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [historyQuery, setHistoryQuery] = useState('')
@@ -60,10 +120,17 @@ export default function PlayerDetail() {
       .playerStats(pid)
       .then(setStats)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+    api
+      .playerTimeline(pid)
+      .then(setTimeline)
+      .catch(() => {
+        /* charts are optional; stats already show the error */
+      })
   }
   useEffect(() => {
     const ctrl = new AbortController()
     setLoading(true)
+    setTimeline(null)
     api
       .playerStats(pid, ctrl.signal)
       .then((s) => {
@@ -74,6 +141,14 @@ export default function PlayerDetail() {
       })
       .finally(() => {
         if (!ctrl.signal.aborted) setLoading(false)
+      })
+    api
+      .playerTimeline(pid, ctrl.signal)
+      .then((t) => {
+        if (!ctrl.signal.aborted) setTimeline(t)
+      })
+      .catch(() => {
+        /* ignore: chart panel simply stays hidden */
       })
     return () => ctrl.abort()
   }, [pid])
@@ -230,6 +305,10 @@ export default function PlayerDetail() {
             <Stat label="Win rate" value={`${tr.totals.win_rate}%`} />
           </div>
 
+          {timeline && timeline.tournaments.length > 0 && (
+            <FormCharts points={timeline.tournaments} />
+          )}
+
           <div className="panel">
             <div className="row between" style={{ marginBottom: '0.5rem' }}>
               <h3 style={{ margin: 0 }}>Tournament history</h3>
@@ -331,6 +410,10 @@ export default function PlayerDetail() {
           <div className="stats-grid" style={{ marginBottom: '1rem' }}>
             <Stat label="Win rate" value={`${fr.totals.win_rate}%`} />
           </div>
+
+          {timeline && timeline.friendlies.length > 0 && (
+            <FormCharts points={timeline.friendlies} />
+          )}
 
           <div className="panel">
             <div className="row between" style={{ marginBottom: '0.5rem' }}>

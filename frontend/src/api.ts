@@ -5,6 +5,7 @@ import type {
   Meta,
   Player,
   PlayerStats,
+  PlayerTimeline,
   Table,
   Tournament,
   TournamentDetail,
@@ -60,6 +61,8 @@ export const api = {
   deletePlayer: (id: number) => http<void>(`/api/players/${id}`, { method: 'DELETE' }),
   playerStats: (id: number, signal?: AbortSignal) =>
     http<PlayerStats>(`/api/players/${id}/stats`, { signal }),
+  playerTimeline: (id: number, signal?: AbortSignal) =>
+    http<PlayerTimeline>(`/api/players/${id}/timeline`, { signal }),
   compare: (a: number, b: number, signal?: AbortSignal) =>
     http<CompareResult>(`/api/compare?a=${a}&b=${b}`, { signal }),
 

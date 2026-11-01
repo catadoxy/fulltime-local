@@ -179,6 +179,28 @@ export interface PlayerStats {
   friendlies: { totals: PlayerTotals; matches: FriendlyMatch[] }
 }
 
+export interface TimelinePoint {
+  match: number
+  date: string | null
+  elo: number
+  rating: number
+  goals_for: number
+  goals_against: number
+  cumulative_goals_for: number
+  cumulative_goals_against: number
+  result: 'W' | 'D' | 'L'
+  opponent_id: number | null
+  opponent_name: string
+  competition: string
+  tournament_id: number | null
+  home: boolean
+}
+
+export interface PlayerTimeline {
+  tournaments: TimelinePoint[]
+  friendlies: TimelinePoint[]
+}
+
 export interface CompareSection extends PlayerTotals {
   elo: number
   rating: number
