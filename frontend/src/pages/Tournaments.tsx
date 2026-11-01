@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
-import { ErrorBanner, SearchInput, SortableTh, formatDate } from '../components/ui'
+import { ErrorBanner, SearchInput, SortableTh, TableWrap, formatDate } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { Player, Tournament, TournamentFormat, TournamentSettings } from '../types'
 
@@ -181,7 +181,7 @@ export default function Tournaments() {
       </div>
 
       {canEdit && showCreate && (
-        <form className="panel" onSubmit={submit}>
+        <form className="panel create-form" onSubmit={submit}>
           <div className="row">
             <div className="grow">
               <label htmlFor="t-name">Name</label>
@@ -372,8 +372,9 @@ export default function Tournaments() {
               {sorted.length} of {tournaments.length}
             </span>
           </div>
-          <table>
-            <thead>
+          <TableWrap size="wide">
+            <table className="tournaments-table">
+              <thead>
               <tr>
                 <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
                 <SortableTh label="Format" sortKey="format" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
@@ -408,7 +409,8 @@ export default function Tournaments() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </TableWrap>
           {loading ? (
             <p className="muted">Loading…</p>
           ) : (

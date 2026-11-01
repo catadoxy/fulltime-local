@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 export interface ChartSeries {
   name: string
@@ -32,8 +32,20 @@ export function TrendChart({
 }) {
   const [hover, setHover] = useState<number | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [chartWidth, setChartWidth] = useState(720)
 
-  const width = 720
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const update = () => setChartWidth(Math.max(280, Math.round(el.clientWidth)))
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const width = chartWidth
   const pad = { top: 14, right: 16, bottom: 26, left: 44 }
   const innerW = width - pad.left - pad.right
   const innerH = height - pad.top - pad.bottom
@@ -86,7 +98,7 @@ export function TrendChart({
   const tooltipLeft = hover != null ? Math.min(86, Math.max(14, ((xAt(hover) + pad.left) / width) * 100)) : 0
 
   return (
-    <div className="chart-wrap">
+    <div className="chart-wrap" ref={wrapRef}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}

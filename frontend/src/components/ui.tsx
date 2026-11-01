@@ -44,6 +44,18 @@ export function EmptyState({ children }: { children: React.ReactNode }) {
   return <div className="empty-state muted">{children}</div>
 }
 
+export function TableWrap({
+  children,
+  size = 'default',
+}: {
+  children: React.ReactNode
+  size?: 'default' | 'comfortable' | 'wide'
+}) {
+  return (
+    <div className={`table-wrap${size === 'default' ? '' : ` ${size}`}`}>{children}</div>
+  )
+}
+
 export function LoadingSkeleton({ rows = 4, label = 'Loading…' }: { rows?: number; label?: string }) {
   return (
     <div className="panel" aria-busy="true" aria-label={label}>

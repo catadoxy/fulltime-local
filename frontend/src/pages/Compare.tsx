@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { ErrorBanner } from '../components/ui'
+import { ErrorBanner, TableWrap } from '../components/ui'
 import type { CompareResult, Player } from '../types'
 
 function Row({
@@ -191,15 +191,16 @@ export default function Compare() {
             <div className="small muted" style={{ textAlign: 'center', marginBottom: '0.75rem' }}>
               {data.head_to_head.played} played · goals {data.head_to_head.a_goals}–{data.head_to_head.b_goals}
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Competition</th>
-                  <th className="num">Score</th>
-                  <th>Result</th>
-                </tr>
-              </thead>
+            <TableWrap>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Competition</th>
+                    <th className="num">Score</th>
+                    <th>Result</th>
+                  </tr>
+                </thead>
               <tbody>
                 {data.head_to_head.matches.map((m, i) => (
                   <tr key={i}>
@@ -227,12 +228,14 @@ export default function Compare() {
                   </tr>
                 )}
               </tbody>
-            </table>
+              </table>
+            </TableWrap>
           </div>
 
           <div className="panel">
             <h3 style={{ marginTop: 0 }}>Overall</h3>
-            <table className="compare-table">
+            <TableWrap>
+              <table className="compare-table">
               <thead>
                 <tr>
                   <th>
@@ -282,7 +285,8 @@ export default function Compare() {
                   </>
                 )}
               </tbody>
-            </table>
+              </table>
+            </TableWrap>
           </div>
         </>
       )}

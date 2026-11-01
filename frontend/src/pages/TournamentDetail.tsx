@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
-import { ConfirmDialog, ErrorBanner, LoadingSkeleton, formatDuration, parseTimestamp } from '../components/ui'
+import { ConfirmDialog, ErrorBanner, LoadingSkeleton, TableWrap, formatDuration, parseTimestamp } from '../components/ui'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
 const KNOCKOUT_ORDER = ['r64', 'r32', 'r16', 'qf', 'sf', 'third', 'final']
@@ -352,7 +352,8 @@ export default function TournamentDetail() {
 
 function StandingsTable({ table, qualifiers = 1 }: { table: Table; qualifiers?: number }) {
   return (
-    <table>
+    <TableWrap size="wide">
+      <table className="standings-table">
       <thead>
         <tr>
           <th className="num">#</th>
@@ -392,7 +393,8 @@ function StandingsTable({ table, qualifiers = 1 }: { table: Table; qualifiers?: 
           </tr>
         )}
       </tbody>
-    </table>
+      </table>
+    </TableWrap>
   )
 }
 

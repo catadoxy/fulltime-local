@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
-import { ConfirmDialog, EmptyState, ErrorBanner, SortableTh } from '../components/ui'
+import { ConfirmDialog, EmptyState, ErrorBanner, SortableTh, TableWrap } from '../components/ui'
 import type { Player } from '../types'
 
 export default function Players() {
@@ -158,7 +158,8 @@ export default function Players() {
             {loading ? ' · searching…' : ''}
           </span>
         </div>
-        <table className="players-table">
+        <TableWrap>
+          <table className="players-table">
           <thead>
             <tr>
               <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
@@ -199,7 +200,8 @@ export default function Players() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </TableWrap>
         {loading ? (
           <p className="muted">Loading…</p>
         ) : (
