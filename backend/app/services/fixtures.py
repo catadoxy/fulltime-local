@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import random
 from typing import Any
 
 from sqlalchemy import select
@@ -26,6 +27,8 @@ def default_settings(fmt: str) -> dict[str, Any]:
         # Wall-clock planning: one match + a changeover per slot.
         "match_minutes": 10,
         "changeover_minutes": 5,
+        # Shuffle the draw so nobody gets a systematically easy/hard sequence.
+        "random_draw": True,
     }
     if fmt == "league":
         return {**base, "double_round": False}
@@ -64,6 +67,25 @@ def _nb_pitches(matches: list[Match]) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Draw
+# --------------------------------------------------------------------------- #
+_SYSTEM_RANDOM = random.SystemRandom()
+
+
+def draw_order(player_ids: list[int], settings: dict[str, Any]) -> list[int]:
+    """Order used for fixture generation.
+
+    With ``random_draw`` (the default) the list is shuffled, so the schedule is
+    a fair random draw: no player is deliberately given an easy or hard run of
+    opponents. Set ``random_draw: False`` to keep the picked order as seeding.
+    """
+    order = list(player_ids)
+    if settings.get("random_draw", True):
+        _SYSTEM_RANDOM.shuffle(order)
+    return order
+
+
+# --------------------------------------------------------------------------- #
 # Creation
 # --------------------------------------------------------------------------- #
 def create_tournament(db: Session, data) -> Tournament:
@@ -92,8 +114,8 @@ def create_tournament(db: Session, data) -> Tournament:
     db.add(tournament)
     db.flush()
 
-    # Participants keep the given order as their seed.
-    order = player_ids
+    # Random draw by default; the picked order is only used when disabled.
+    order = draw_order(player_ids, settings)
     for i, pid in enumerate(order):
         db.add(Participant(tournament_id=tournament.id, player_id=pid, seed=i + 1))
     db.flush()

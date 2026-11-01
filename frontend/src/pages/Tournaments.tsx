@@ -24,6 +24,7 @@ export default function Tournaments() {
   const [startDate, setStartDate] = useState('')
   const [format, setFormat] = useState<TournamentFormat>('league')
   const [nbPitches, setNbPitches] = useState(1)
+  const [randomDraw, setRandomDraw] = useState(true)
   const [matchMinutes, setMatchMinutes] = useState(10)
   const [changeoverMinutes, setChangeoverMinutes] = useState(5)
   const [calibration, setCalibration] = useState<{
@@ -100,6 +101,7 @@ export default function Tournaments() {
           ...settings,
           match_minutes: matchMinutes,
           changeover_minutes: changeoverMinutes,
+          random_draw: randomDraw,
         },
       })
       navigate(`/t/${t.id}`)
@@ -287,8 +289,22 @@ export default function Tournaments() {
 
           <FormatSettings format={format} settings={settings} setSettings={setSettings} />
 
-          <h3>Players ({selected.length})</h3>
-          <p className="muted small">Order matters: the first selected is seed 1.</p>
+          <div className="row between" style={{ alignItems: 'center' }}>
+            <h3 style={{ margin: 0 }}>Players ({selected.length})</h3>
+            <label className="row" style={{ color: 'var(--text)', margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={randomDraw}
+                onChange={(e) => setRandomDraw(e.target.checked)}
+              />
+              Random draw
+            </label>
+          </div>
+          <p className="muted small">
+            {randomDraw
+              ? 'Participants are shuffled, so nobody gets a systematically easy or hard run of matches.'
+              : 'Order matters: the first selected is seed 1.'}
+          </p>
           <div className="grid">
             {players.map((p) => {
               const idx = selected.indexOf(p.id)
@@ -300,7 +316,9 @@ export default function Tournaments() {
                   onClick={() => toggle(p.id)}
                   aria-pressed={idx >= 0}
                 >
-                  <span className="badge">{idx >= 0 ? `#${idx + 1}` : '—'}</span>
+                  <span className="badge">
+                    {idx >= 0 ? (randomDraw ? '✓' : `#${idx + 1}`) : '—'}
+                  </span>
                   <span>{p.name}</span>
                 </button>
               )
