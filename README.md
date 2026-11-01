@@ -11,6 +11,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 
 - **5 tournament formats** — round-robin (single or home & away), knockout,
   group + finals, Swiss, and Champions League.
+- **Random draws by default** — participants are shuffled so nobody gets a
+  systematically easy or hard run of matches; manual seeding is still available.
 - **Auto-scheduling** across a set number of pitches/TVs, giving players fair rest.
 - **Results & standings** — enter scores, tables update, knockouts advance, with a
   bracket view and an automatic champion.

@@ -118,6 +118,7 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
         <div className="tv-list">
           {next.map((m) => (
             <div className="tv-match" key={m.id}>
+              <div className="tv-match-spacer" aria-hidden="true" />
               <div className="tv-side home">{m.home_name}</div>
               <div className="tv-vs">vs</div>
               <div className="tv-side">{m.away_name}</div>
@@ -201,6 +202,7 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
         <div className="tv-list">
           {recent.map((m) => (
             <div className="tv-match result" key={m.id}>
+              <div className="tv-match-spacer" aria-hidden="true" />
               <div className={`tv-side home ${m.winner_id === m.home_id ? 'won' : ''}`}>
                 {m.home_name}
               </div>
