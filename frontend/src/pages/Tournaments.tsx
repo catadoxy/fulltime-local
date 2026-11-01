@@ -337,87 +337,89 @@ export default function Tournaments() {
 
       <ErrorBanner message={error} />
 
-      <div className="panel">
-        <div className="toolbar">
-          <SearchInput value={query} onChange={setQuery} label="Search tournaments" placeholder="Search name or game…" />
-          <div>
-            <label htmlFor="flt-status">Status</label>
-            <select
-              id="flt-status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="flt-format">Format</label>
-            <select
-              id="flt-format"
-              value={formatFilter}
-              onChange={(e) => setFormatFilter(e.target.value as typeof formatFilter)}
-            >
-              <option value="all">All formats</option>
-              {Object.entries(FORMAT_LABELS).map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <span className="muted small" aria-live="polite">
-            {sorted.length} of {tournaments.length}
-          </span>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
-              <SortableTh label="Format" sortKey="format" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
-              <SortableTh label="Status" sortKey="status" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
-              <SortableTh label="Champion" sortKey="champion" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
-              <SortableTh label="Players" sortKey="players" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} numeric />
-              <SortableTh label="Date" sortKey="date" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((t) => (
-              <tr key={t.id}>
-                <td>
-                  <Link to={`/t/${t.id}`}>{t.name}</Link>
-                  {t.note && <div className="muted small">{t.note}</div>}
-                </td>
-                <td className="muted">{FORMAT_LABELS[t.format] ?? t.format}</td>
-                <td>
-                  <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
-                </td>
-                <td>{t.champion_id ? championNames.get(t.champion_id) ?? `#${t.champion_id}` : '—'}</td>
-                <td className="num">{t.players ?? 0}</td>
-                <td className="muted small">{formatDate(t.start_date ?? t.created_at)}</td>
-                <td>
-                  <div className="row" style={{ justifyContent: 'flex-end' }}>
-                    <Link className="btn" to={`/t/${t.id}`}>
-                      Open
-                    </Link>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {loading ? (
-          <p className="muted">Loading…</p>
-        ) : (
-          sorted.length === 0 && (
-            <div className="empty-state">
-              {tournaments.length === 0 ? 'No tournaments yet. Create one above.' : 'No tournaments match these filters.'}
+      {!showCreate && (
+        <div className="panel">
+          <div className="toolbar">
+            <SearchInput value={query} onChange={setQuery} label="Search tournaments" placeholder="Search name or game…" />
+            <div>
+              <label htmlFor="flt-status">Status</label>
+              <select
+                id="flt-status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
             </div>
-          )
-        )}
-      </div>
+            <div>
+              <label htmlFor="flt-format">Format</label>
+              <select
+                id="flt-format"
+                value={formatFilter}
+                onChange={(e) => setFormatFilter(e.target.value as typeof formatFilter)}
+              >
+                <option value="all">All formats</option>
+                {Object.entries(FORMAT_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="muted small" aria-live="polite">
+              {sorted.length} of {tournaments.length}
+            </span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <SortableTh label="Name" sortKey="name" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+                <SortableTh label="Format" sortKey="format" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+                <SortableTh label="Status" sortKey="status" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+                <SortableTh label="Champion" sortKey="champion" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+                <SortableTh label="Players" sortKey="players" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} numeric />
+                <SortableTh label="Date" sortKey="date" activeKey={sort.key} dir={sort.dir} onToggle={toggleSort} />
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((t) => (
+                <tr key={t.id}>
+                  <td>
+                    <Link to={`/t/${t.id}`}>{t.name}</Link>
+                    {t.note && <div className="muted small">{t.note}</div>}
+                  </td>
+                  <td className="muted">{FORMAT_LABELS[t.format] ?? t.format}</td>
+                  <td>
+                    <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
+                  </td>
+                  <td>{t.champion_id ? championNames.get(t.champion_id) ?? `#${t.champion_id}` : '—'}</td>
+                  <td className="num">{t.players ?? 0}</td>
+                  <td className="muted small">{formatDate(t.start_date ?? t.created_at)}</td>
+                  <td>
+                    <div className="row" style={{ justifyContent: 'flex-end' }}>
+                      <Link className="btn" to={`/t/${t.id}`}>
+                        Open
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {loading ? (
+            <p className="muted">Loading…</p>
+          ) : (
+            sorted.length === 0 && (
+              <div className="empty-state">
+                {tournaments.length === 0 ? 'No tournaments yet. Create one above.' : 'No tournaments match these filters.'}
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   )
 }

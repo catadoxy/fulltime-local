@@ -707,7 +707,12 @@ th.num .th-button { margin-left: auto; }
 }
 .tv-match {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns:
+    clamp(90px, 12vw, 210px)
+    minmax(0, 1fr)
+    auto
+    minmax(0, 1fr)
+    clamp(90px, 12vw, 210px);
   gap: 1.1rem;
   align-items: center;
   padding: 0.55rem 1rem;
@@ -717,7 +722,15 @@ th.num .th-button { margin-left: auto; }
   font-size: clamp(1.05rem, 1.5vw, 1.65rem);
 }
 .tv-match.result {
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns:
+    clamp(90px, 12vw, 210px)
+    minmax(0, 1fr)
+    auto
+    minmax(0, 1fr)
+    clamp(90px, 12vw, 210px);
+}
+.tv-match-spacer {
+  min-width: 0;
 }
 .tv-side {
   min-width: 0;
@@ -746,6 +759,7 @@ th.num .th-button { margin-left: auto; }
   color: var(--muted);
   font-size: 0.55em;
   white-space: nowrap;
+  text-align: right;
 }
 .tv-bracket {
   display: grid;
