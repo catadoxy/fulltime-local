@@ -707,12 +707,8 @@ th.num .th-button { margin-left: auto; }
 }
 .tv-match {
   display: grid;
-  grid-template-columns:
-    clamp(90px, 12vw, 210px)
-    minmax(0, 1fr)
-    auto
-    minmax(0, 1fr)
-    clamp(90px, 12vw, 210px);
+  /* Five equal sections: spacer | home | vs | away | meta. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1.1rem;
   align-items: center;
   padding: 0.55rem 1rem;
@@ -722,12 +718,7 @@ th.num .th-button { margin-left: auto; }
   font-size: clamp(1.05rem, 1.5vw, 1.65rem);
 }
 .tv-match.result {
-  grid-template-columns:
-    clamp(90px, 12vw, 210px)
-    minmax(0, 1fr)
-    auto
-    minmax(0, 1fr)
-    clamp(90px, 12vw, 210px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .tv-match-spacer {
   min-width: 0;
@@ -738,9 +729,10 @@ th.num .th-button { margin-left: auto; }
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+  text-align: center;
 }
 .tv-side.home {
-  text-align: right;
+  text-align: center;
 }
 .tv-side.won {
   color: var(--grass);
@@ -748,12 +740,14 @@ th.num .th-button { margin-left: auto; }
 .tv-vs {
   color: var(--muted);
   font-size: 0.72em;
+  text-align: center;
 }
 .tv-score {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 1.15em;
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 .tv-match-meta {
   color: var(--muted);
