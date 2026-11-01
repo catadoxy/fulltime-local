@@ -42,12 +42,26 @@ function shortDate(value: string | null): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
 
+function fullDate(value: string | null): string {
+  if (!value) return '—'
+  const d = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 function FormCharts({ points }: { points: TimelinePoint[] }) {
   const [metric, setMetric] = useState<'elo' | 'rating' | 'goals'>('elo')
 
+  // A career can span years; axis labels need the year or Apr→Oct looks like
+  // a single season. Tooltips always show the full date.
+  const years = new Set(points.map((p) => p.date?.slice(0, 4)).filter(Boolean))
+  const multiYear = years.size > 1
+  const span =
+    points.length > 1 ? `${fullDate(points[0].date)} – ${fullDate(points[points.length - 1].date)}` : ''
+
   const meta = points.map((p) => ({
-    label: `${shortDate(p.date)} · ${p.opponent_name}`,
-    axisLabel: shortDate(p.date),
+    label: `${fullDate(p.date)} · ${p.opponent_name}`,
+    axisLabel: multiYear ? fullDate(p.date) : shortDate(p.date),
     detail: p.competition,
     result: p.result,
   }))
@@ -81,7 +95,10 @@ function FormCharts({ points }: { points: TimelinePoint[] }) {
         </div>
       </div>
       <p className="muted small" style={{ marginTop: 0 }}>
-        {metric === 'goals' ? 'Cumulative goals across matches.' : `Match-by-match ${metric}.`}
+        {metric === 'goals'
+          ? 'Cumulative goals across matches.'
+          : `Match-by-match ${metric === 'elo' ? 'Elo' : 'rating'}.`}
+        {span && <> · {span}</>}
       </p>
       <TrendChart
         series={series}
