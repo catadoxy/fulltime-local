@@ -93,21 +93,60 @@ def estimate_tournament(t: Tournament) -> dict:
 
     rounds: list[dict] = []
     slots = 0
+    remaining_slots = 0
+    remaining_matches = 0
+    played_matches = 0
+
     for key in sorted(grouped, key=_round_key):
         stage, rnd = key
-        count = len(grouped[key])
+        items = grouped[key]
+        count = len(items)
         round_slots = math.ceil(count / pitches) if count else 0
         slots += round_slots
-        rounds.append({"stage": stage, "round": rnd, "matches": count, "slots": round_slots})
+
+        if items and items[0] is None:
+            # Projected Swiss round: nothing played yet.
+            round_remaining = count
+            round_remaining_slots = round_slots
+        else:
+            unplayed = [m for m in items if not m.played]
+            round_remaining = len(unplayed)
+            if round_remaining == 0:
+                round_remaining_slots = 0
+            elif any(m.played for m in items):
+                # A round in progress: count the distinct slots still to play.
+                round_remaining_slots = len({m.slot for m in unplayed})
+            else:
+                # Not started (or not scheduled yet): use the planned slots.
+                round_remaining_slots = math.ceil(round_remaining / pitches)
+
+        remaining_matches += round_remaining
+        remaining_slots += round_remaining_slots
+        played_matches += count - round_remaining
+        rounds.append(
+            {
+                "stage": stage,
+                "round": rnd,
+                "matches": count,
+                "slots": round_slots,
+                "remaining_matches": round_remaining,
+                "remaining_slots": round_remaining_slots,
+            }
+        )
 
     slot_length = per_match + changeover
+    total_matches = sum(r["matches"] for r in rounds)
     return {
         "match_minutes": per_match,
         "changeover_minutes": changeover,
         "slot_minutes": slot_length,
-        "matches": sum(r["matches"] for r in rounds),
+        "matches": total_matches,
+        "played_matches": played_matches,
+        "remaining_matches": remaining_matches,
         "slots": slots,
+        "remaining_slots": remaining_slots,
         "minutes": slots * slot_length,
+        "remaining_minutes": remaining_slots * slot_length,
         "rounds": rounds,
     }
 

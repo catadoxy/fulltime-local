@@ -232,12 +232,12 @@ export default function TournamentDetail() {
                 <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
                 <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
                 <span className="muted">{t.nb_pitches} pitch(es)</span>
-                {t.status === 'active' && t.estimate && t.estimate.minutes > 0 && (
+                {t.status === 'active' && t.estimate && t.estimate.remaining_minutes > 0 && (
                   <span
                     className="badge"
-                    title={`${t.estimate.slots} slot(s) × ${t.estimate.slot_minutes} min = ${t.estimate.minutes} min (${t.estimate.match_minutes} min match + ${t.estimate.changeover_minutes} min changeover)`}
+                    title={`${t.estimate.remaining_slots} of ${t.estimate.slots} slot(s) left × ${t.estimate.slot_minutes} min = ${t.estimate.remaining_minutes} min (${t.estimate.match_minutes} min match + ${t.estimate.changeover_minutes} min changeover) · ${t.estimate.played_matches}/${t.estimate.matches} matches played`}
                   >
-                    ≈ {formatDuration(t.estimate.minutes)}
+                    ≈ {formatDuration(t.estimate.remaining_minutes)} left
                   </span>
                 )}
                 {elapsedMinutes != null && (

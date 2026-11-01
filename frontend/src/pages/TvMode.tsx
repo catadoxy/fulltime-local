@@ -332,7 +332,11 @@ export default function TvMode() {
             {t.note ? ` · ${t.note}` : ''}
             {t.nb_pitches > 1 ? ` · ${t.nb_pitches} pitches` : ''}
             {estimate && estimate.minutes > 0
-              ? ` · about ${formatDuration(estimate.minutes)}`
+              ? t.status === 'completed'
+                ? ` · planned ${formatDuration(estimate.minutes)}`
+                : estimate.remaining_minutes > 0
+                  ? ` · about ${formatDuration(estimate.remaining_minutes)} left`
+                  : ''
               : ''}
             {elapsedMinutes != null
               ? t.status === 'completed'

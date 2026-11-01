@@ -92,6 +92,73 @@ def test_swiss_projects_remaining_rounds():
     assert len(est["rounds"]) == 3
 
 
+def test_estimate_counts_down_as_matches_are_played():
+    _reset()
+    ids = _players(4)
+    t = client.post(
+        "/api/tournaments",
+        json={
+            "name": "Progress",
+            "format": "league",
+            "player_ids": ids,
+            "nb_pitches": 1,
+            "settings": {"match_minutes": 10, "changeover_minutes": 5},
+        },
+    ).json()
+    tid = t["id"]
+    assert t["estimate"]["slots"] == 6
+    assert t["estimate"]["remaining_slots"] == 6
+    assert t["estimate"]["remaining_minutes"] == 90
+
+    matches = client.get(f"/api/tournaments/{tid}/matches").json()
+    first = sorted(matches, key=lambda m: (m["round_number"], m["slot"]))[0]
+    client.post(
+        f"/api/tournaments/{tid}/matches/{first['id']}/result",
+        json={"home_score": 2, "away_score": 1},
+    )
+    est = client.get(f"/api/tournaments/{tid}").json()["estimate"]
+    assert est["played_matches"] == 1
+    assert est["remaining_matches"] == 5
+    assert est["remaining_slots"] == 5
+    assert est["remaining_minutes"] == 75
+
+    # Finish the rest.
+    for _ in range(20):
+        matches = client.get(f"/api/tournaments/{tid}/matches").json()
+        pending = [m for m in matches if not m["played"] and m["home_id"] and m["away_id"]]
+        if not pending:
+            break
+        m = pending[0]
+        client.post(
+            f"/api/tournaments/{tid}/matches/{m['id']}/result",
+            json={"home_score": 1, "away_score": 0},
+        )
+    final = client.get(f"/api/tournaments/{tid}").json()
+    assert final["status"] == "completed"
+    assert final["estimate"]["remaining_minutes"] == 0
+    assert final["estimate"]["remaining_matches"] == 0
+
+
+def test_swiss_remaining_includes_projected_rounds():
+    _reset()
+    ids = _players(6)
+    t = client.post(
+        "/api/tournaments",
+        json={
+            "name": "Swiss remaining",
+            "format": "swiss",
+            "player_ids": ids,
+            "nb_pitches": 1,
+            "settings": {"rounds": 3, "match_minutes": 12, "changeover_minutes": 3},
+        },
+    ).json()
+    est = t["estimate"]
+    assert est["matches"] == 9
+    assert est["remaining_matches"] == 9
+    assert est["remaining_slots"] == 9
+    assert est["remaining_minutes"] == 9 * 15
+
+
 def test_knockout_byes_do_not_add_time():
     _reset()
     ids = _players(6)  # bracket of 8 -> two byes
