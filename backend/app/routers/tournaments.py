@@ -83,6 +83,16 @@ def close_tournament(tournament_id: int, db: Session = Depends(get_db)):
     return tournament_out(t, detail=True)
 
 
+@router.post("/{tournament_id}/reopen")
+def reopen_tournament(tournament_id: int, db: Session = Depends(get_db)):
+    t = db.get(Tournament, tournament_id)
+    if not t:
+        raise HTTPException(404, "Tournament not found")
+    results.reopen_tournament(db, t)
+    db.refresh(t)
+    return tournament_out(t, detail=True)
+
+
 @router.get("/{tournament_id}/matches")
 def list_matches(tournament_id: int, db: Session = Depends(get_db)):
     t = db.get(Tournament, tournament_id)
@@ -136,5 +146,8 @@ def clear_match_result(tournament_id: int, match_id: int, db: Session = Depends(
     m = db.get(Match, match_id)
     if not m or m.tournament_id != tournament_id:
         raise HTTPException(404, "Match not found")
-    results.clear_result(db, m)
+    try:
+        results.clear_result(db, m)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
     return match_out(m)

@@ -50,6 +50,9 @@ def test_clear_result_cascades_downstream():
     sf = next(m for m in matches if m["stage"] == "sf" and m["played"])
     final = next(m for m in matches if m["stage"] == "final")
 
+    # Completed events are locked; reopen before clearing.
+    assert client.post(f"/api/tournaments/{tid}/reopen").status_code == 200
+
     r = client.delete(f"/api/tournaments/{tid}/matches/{sf['id']}/result")
     assert r.status_code == 200, r.text
 

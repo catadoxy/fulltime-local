@@ -146,6 +146,21 @@ export default function TournamentDetail() {
     }
   }
 
+  async function reopenTournament() {
+    if (!t) return
+    setBusy(true)
+    setError('')
+    try {
+      await api.reopenTournament(t.id)
+      setEditing(false)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading && !t) return <LoadingSkeleton rows={6} label="Loading tournament…" />
 
   if (!t) return <div className="panel">{error || 'Loading…'}</div>
@@ -208,7 +223,7 @@ export default function TournamentDetail() {
             <>
               <h1 style={{ marginBottom: t.note ? 2 : 6 }}>
                 {t.name}{' '}
-                {canEdit && (
+                {canEdit && t.status === 'active' && (
                   <button
                     className="btn"
                     style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
@@ -220,6 +235,17 @@ export default function TournamentDetail() {
                     }}
                   >
                     ✎ Edit
+                  </button>
+                )}
+                {canEdit && t.status === 'completed' && (
+                  <button
+                    className="btn"
+                    style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
+                    onClick={() => void reopenTournament()}
+                    disabled={busy}
+                    title="Reopen to edit results, then close it again"
+                  >
+                    Reopen
                   </button>
                 )}
               </h1>
@@ -337,7 +363,7 @@ export default function TournamentDetail() {
         nbPitches={t.nb_pitches}
         tid={tid}
         onChange={() => load()}
-        canEdit={canEdit}
+        canEdit={canEdit && t.status === 'active'}
       />
 
       {hasBracket && (

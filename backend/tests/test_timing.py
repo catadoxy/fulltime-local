@@ -53,6 +53,7 @@ def test_started_and_finished_timestamps_round_trip():
     assert t["finished_at"] >= t["started_at"]
 
     m = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+    assert client.post(f"/api/tournaments/{tid}/reopen").status_code == 200
     client.delete(f"/api/tournaments/{tid}/matches/{m['id']}/result")
 
     reopened = client.get(f"/api/tournaments/{tid}").json()
