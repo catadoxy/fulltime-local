@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
 import { ConfirmDialog, ErrorBanner, LoadingSkeleton, TableWrap, formatDuration, parseTimestamp } from '../components/ui'
+import { FORMAT_LABELS } from '../labels'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
 const KNOCKOUT_ORDER = ['r64', 'r32', 'r16', 'qf', 'sf', 'third', 'final']
@@ -255,7 +256,7 @@ export default function TournamentDetail() {
                 </div>
               )}
               <div className="row small">
-                <span className="muted">{STAGE_LABELS[t.format] ?? t.format}</span>
+                <span className="muted">{FORMAT_LABELS[t.format] ?? t.format}</span>
                 <span className={`badge ${t.status === 'completed' ? 'done' : 'live'}`}>{t.status}</span>
                 <span className="muted">{t.nb_pitches} pitch(es)</span>
                 {t.status === 'active' && t.estimate && t.estimate.remaining_minutes > 0 && (
