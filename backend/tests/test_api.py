@@ -455,10 +455,16 @@ def test_champion_updates_after_edit():
     )
     assert client.get(f"/api/tournaments/{tid}").json()["champion_id"] == m["home_id"]
 
-    # Editing the result flips the standings leader -> champion follows.
+    # Completed tournaments are read-only; reopen before editing.
+    assert client.post(f"/api/tournaments/{tid}/reopen").status_code == 200
     client.post(
         f"/api/tournaments/{tid}/matches/{m['id']}/result", json={"home_score": 0, "away_score": 2}
     )
+    # Still open because it was reopened manually.
+    assert client.get(f"/api/tournaments/{tid}").json()["status"] == "active"
+    client.post(f"/api/tournaments/{tid}/close")
+
+    # Closing recomputes the champion from the edited result.
     assert client.get(f"/api/tournaments/{tid}").json()["champion_id"] == m["away_id"]
 
 

@@ -123,6 +123,8 @@ export const api = {
     http<void>(`/api/tournaments/${id}`, { method: 'DELETE' }),
   closeTournament: (id: number) =>
     http<TournamentDetail>(`/api/tournaments/${id}/close`, { method: 'POST' }),
+  reopenTournament: (id: number) =>
+    http<TournamentDetail>(`/api/tournaments/${id}/reopen`, { method: 'POST' }),
 
   matches: (id: number, signal?: AbortSignal) =>
     http<Match[]>(`/api/tournaments/${id}/matches`, { signal }),

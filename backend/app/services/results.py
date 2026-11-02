@@ -67,6 +67,8 @@ def advance_byes(db: Session, t: Tournament) -> None:
 
 def set_result(db: Session, m: Match, payload) -> Match:
     t = m.tournament
+    if t.status == "completed":
+        raise ValueError("Tournament is closed - reopen it to edit results")
     m.home_score = payload.home_score
     m.away_score = payload.away_score
     m.home_pen = payload.home_pen
@@ -108,6 +110,8 @@ def set_result(db: Session, m: Match, payload) -> Match:
 
 def clear_result(db: Session, m: Match) -> Match:
     t = m.tournament
+    if t.status == "completed":
+        raise ValueError("Tournament is closed - reopen it to edit results")
     old_winner = m.winner_id
     old_next_id = m.next_match_id
     old_slot = m.next_slot
@@ -219,6 +223,9 @@ def _maybe_complete(db: Session, t: Tournament) -> None:
     """Mark a tournament completed once every match has been played."""
     if t.status == "completed":
         return
+    # A manually reopened tournament stays open until it is closed again.
+    if (t.settings or {}).get("reopened"):
+        return
     if db.execute(select(Match.id).where(Match.tournament_id == t.id).limit(1)).first() is None:
         return  # no fixtures yet
     unplayed = db.execute(
@@ -312,6 +319,24 @@ def close_tournament(db: Session, t: Tournament) -> Tournament:
         t.end_date = date.today()
     if t.finished_at is None:
         t.finished_at = _now()
+    # Closing a reopened tournament clears the manual hold.
+    settings = dict(t.settings or {})
+    settings.pop("reopened", None)
+    t.settings = settings
+    db.commit()
+    db.refresh(t)
+    return t
+
+
+def reopen_tournament(db: Session, t: Tournament) -> Tournament:
+    """Reopen a completed tournament so results can be edited again."""
+    if t.status != "completed":
+        return t
+    t.status = "active"
+    t.end_date = None
+    t.finished_at = None
+    t.champion_id = None
+    t.settings = {**(t.settings or {}), "reopened": True}
     db.commit()
     db.refresh(t)
     return t

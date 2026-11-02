@@ -285,6 +285,13 @@ button.danger {
 button.danger:hover { background: color-mix(in srgb, var(--red) 14%, transparent); border-color: var(--red); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ---- Forms ---- */
 input,
 select,
