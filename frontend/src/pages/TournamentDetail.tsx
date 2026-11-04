@@ -166,11 +166,17 @@ export default function TournamentDetail() {
 
   if (!t) return <div className="panel">{error || 'Loading…'}</div>
 
+  const createdAt = parseTimestamp(t.created_at)
   const startedAt = parseTimestamp(t.started_at)
   const finishedAt = parseTimestamp(t.finished_at)
-  const elapsedMinutes = startedAt
-    ? Math.max(0, Math.round(((finishedAt?.getTime() ?? now) - startedAt.getTime()) / 60000))
-    : null
+  // While running, the clock starts at creation. Completed events keep the
+  // actual play duration (first result -> finish) so timing stays meaningful.
+  const clockStart = t.status === 'completed' ? startedAt : (createdAt ?? startedAt)
+  const clockEnd = t.status === 'completed' ? finishedAt : new Date(now)
+  const elapsedMinutes =
+    clockStart && clockEnd
+      ? Math.max(0, Math.round((clockEnd.getTime() - clockStart.getTime()) / 60000))
+      : null
   const elapsedLabel = elapsedMinutes === 0 ? '<1m' : formatDuration(elapsedMinutes ?? 0)
 
   return (
@@ -271,9 +277,13 @@ export default function TournamentDetail() {
                   <span
                     className="badge"
                     title={
-                      startedAt
-                        ? `Started ${startedAt.toLocaleString()}${finishedAt ? ` · finished ${finishedAt.toLocaleString()}` : ''}`
-                        : undefined
+                      t.status === 'completed'
+                        ? startedAt
+                          ? `Started ${startedAt.toLocaleString()}${finishedAt ? ` · finished ${finishedAt.toLocaleString()}` : ''}`
+                          : undefined
+                        : createdAt
+                          ? `Created ${createdAt.toLocaleString()}`
+                          : undefined
                     }
                   >
                     {t.status === 'completed' ? `Took ${elapsedLabel}` : `${elapsedLabel} elapsed`}

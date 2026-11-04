@@ -315,11 +315,15 @@ export default function TvMode() {
 
   const panel = panels[index] ?? null
   const estimate = t.estimate
+  const createdAt = parseTimestamp(t.created_at)
   const startedAt = parseTimestamp(t.started_at)
   const finishedAt = parseTimestamp(t.finished_at)
-  const elapsedMinutes = startedAt
-    ? Math.max(0, Math.round(((finishedAt?.getTime() ?? clock.getTime()) - startedAt.getTime()) / 60000))
-    : null
+  const clockStart = t.status === 'completed' ? startedAt : (createdAt ?? startedAt)
+  const clockEnd = t.status === 'completed' ? finishedAt : clock
+  const elapsedMinutes =
+    clockStart && clockEnd
+      ? Math.max(0, Math.round((clockEnd.getTime() - clockStart.getTime()) / 60000))
+      : null
   const elapsedLabel = elapsedMinutes === 0 ? '<1m' : formatDuration(elapsedMinutes ?? 0)
 
   return (
