@@ -13,6 +13,7 @@ from ..engine import round_robin as rr
 from ..engine import scheduling
 from ..engine import swiss as swiss_engine
 from ..models import Group, Match, Participant, Player, Tournament
+from ..football_data import find_teams
 from .estimate import changeover_minutes, match_minutes
 
 KNOCKOUT_STAGES = {"r64", "r32", "r16", "qf", "sf", "third", "final"}
@@ -97,6 +98,13 @@ def create_tournament(db: Session, data) -> Tournament:
     if len(players) != len(player_ids):
         raise ValueError("One or more players do not exist")
 
+    participant_teams = {int(pid): int(team_id) for pid, team_id in data.participant_teams.items()}
+    if not set(participant_teams).issubset(player_ids):
+        raise ValueError("A team can only be assigned to a selected player")
+    teams = find_teams(db, set(participant_teams.values()))
+    if len(teams) != len(set(participant_teams.values())):
+        raise ValueError("One or more selected teams are no longer available")
+
     fmt = data.format
     settings = {**default_settings(fmt), **(data.settings or {})}
     # Keep the time plan within sane bounds whatever the client sends.
@@ -117,7 +125,14 @@ def create_tournament(db: Session, data) -> Tournament:
     # Random draw by default; the picked order is only used when disabled.
     order = draw_order(player_ids, settings)
     for i, pid in enumerate(order):
-        db.add(Participant(tournament_id=tournament.id, player_id=pid, seed=i + 1))
+        db.add(
+            Participant(
+                tournament_id=tournament.id,
+                player_id=pid,
+                team_id=participant_teams.get(pid),
+                seed=i + 1,
+            )
+        )
     db.flush()
 
     if fmt == "league":

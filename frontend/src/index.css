@@ -420,6 +420,14 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 }
 .player-pick:hover { border-color: var(--line-strong); }
 .player-pick.selected { border-color: var(--floodlight); background: color-mix(in srgb, var(--floodlight) 14%, transparent); }
+.team-crest { width: 1.35rem; height: 1.35rem; object-fit: contain; flex: 0 0 auto; }
+.team-label { display: inline-flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.team-assignment-section { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.team-assignment-panel { display: grid; gap: 0.8rem; margin-top: 0.75rem; padding: 0.85rem; border-radius: var(--radius); background: var(--surface-2); }
+.team-assignment-list { display: grid; gap: 0.45rem; }
+.team-assignment-row { display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 1fr) 1.5rem; align-items: center; gap: 0.65rem; }
+.team-assignment-player { font-weight: 600; }
+.team-crest-placeholder { width: 1.35rem; height: 1.35rem; }
 
 /* ---- Standings / stats ---- */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.65rem; }
@@ -669,6 +677,8 @@ th.num .th-button { margin-left: auto; }
   .create-form .num-input {
     width: 100%;
   }
+  .team-assignment-row { grid-template-columns: 1fr 1.5rem; }
+  .team-assignment-player { grid-column: 1 / -1; }
 
   .match {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

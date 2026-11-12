@@ -45,6 +45,8 @@ def test_setup_and_roles():
 
     # Viewer can read but not write.
     assert viewer.get("/api/players").status_code == 200
+    assert viewer.get("/api/settings").status_code == 200
+    assert viewer.put("/api/settings/football-data", json={"token": "not-allowed"}).status_code == 403
     assert viewer.post("/api/players", json={"name": "Nope"}).status_code == 403
     assert viewer.get("/api/tournaments").status_code == 200
     assert viewer.post("/api/tournaments", json={"name": "Nope"}).status_code == 403

@@ -29,6 +29,23 @@ export interface Participant {
   player: Player
   seed: number | null
   group_id: number | null
+  team: FootballTeam | null
+}
+
+export interface FootballTeam {
+  id: number
+  name: string
+  short_name: string | null
+  crest_url: string | null
+  competition_code: string
+  competition_name: string
+}
+
+export interface FootballCompetition {
+  id: number
+  code: string
+  name: string
+  emblem: string | null
 }
 
 export interface TournamentSettings {

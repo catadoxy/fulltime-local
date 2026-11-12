@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
 import { ConfirmDialog, ErrorBanner, LoadingSkeleton, TableWrap, formatDuration, parseTimestamp } from '../components/ui'
+import { TeamLabel } from '../components/TeamLabel'
 import { FORMAT_LABELS } from '../labels'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
 
@@ -79,6 +80,12 @@ export default function TournamentDetail() {
   const playerNames = useMemo(() => {
     const map = new Map<number, string>()
     t?.participants.forEach((p) => map.set(p.player_id, p.player.name))
+    return map
+  }, [t])
+
+  const playerTeams = useMemo(() => {
+    const map = new Map<number, TDetail['participants'][number]['team']>()
+    t?.participants.forEach((p) => map.set(p.player_id, p.team))
     return map
   }, [t])
 
@@ -362,7 +369,7 @@ export default function TournamentDetail() {
           {tables.map((table, i) => (
             <div key={i} style={{ marginBottom: i < tables.length - 1 ? '1rem' : 0 }}>
               {table.group_name && <div className="row-header">{table.group_name}</div>}
-              <StandingsTable table={table} qualifiers={qualifiers} />
+              <StandingsTable table={table} qualifiers={qualifiers} playerTeams={playerTeams} />
             </div>
           ))}
         </div>
@@ -375,19 +382,24 @@ export default function TournamentDetail() {
         tid={tid}
         onChange={() => load()}
         canEdit={canEdit && t.status === 'active'}
+        playerTeams={playerTeams}
       />
 
       {hasBracket && (
         <div className="panel">
           <h3 style={{ marginTop: 0 }}>Bracket</h3>
-          <Bracket matches={matches} />
+          <Bracket matches={matches} playerTeams={playerTeams} />
         </div>
       )}
     </div>
   )
 }
 
-function StandingsTable({ table, qualifiers = 1 }: { table: Table; qualifiers?: number }) {
+function StandingsTable({ table, qualifiers = 1, playerTeams }: {
+  table: Table
+  qualifiers?: number
+  playerTeams: Map<number, (TDetail['participants'][number]['team'])>
+}) {
   return (
     <TableWrap size="wide">
       <table className="standings-table">
@@ -410,7 +422,9 @@ function StandingsTable({ table, qualifiers = 1 }: { table: Table; qualifiers?: 
           <tr key={r.player_id} className={i < qualifiers ? 'leader' : undefined}>
             <td className="num">{i + 1}</td>
             <td>
-              <Link to={`/players/${r.player_id}`}>{r.player_name}</Link>
+              <TeamLabel team={playerTeams.get(r.player_id)}>
+                <Link to={`/players/${r.player_id}`}>{r.player_name}</Link>
+              </TeamLabel>
             </td>
             <td className="num">{r.played}</td>
             <td className="num">{r.won}</td>
@@ -442,6 +456,7 @@ function Fixtures({
   tid,
   onChange,
   canEdit,
+  playerTeams,
 }: {
   matches: Match[]
   groupNames: Map<number, string>
@@ -449,6 +464,7 @@ function Fixtures({
   tid: number
   onChange: () => void
   canEdit: boolean
+  playerTeams: Map<number, (TDetail['participants'][number]['team'])>
 }) {
   // Group into sections: stage (+ group), then by round within the section.
   const sections = useMemo(() => {
@@ -502,6 +518,8 @@ function Fixtures({
                       nbPitches={nbPitches}
                       onChange={onChange}
                       canEdit={canEdit}
+                      homeTeam={playerTeams.get(m.home_id ?? -1)}
+                      awayTeam={playerTeams.get(m.away_id ?? -1)}
                     />
                   ))}
               </div>
@@ -521,12 +539,16 @@ function MatchRow({
   nbPitches,
   onChange,
   canEdit,
+  homeTeam,
+  awayTeam,
 }: {
   match: Match
   tid: number
   nbPitches: number
   onChange: () => void
   canEdit: boolean
+  homeTeam?: TDetail['participants'][number]['team']
+  awayTeam?: TDetail['participants'][number]['team']
 }) {
   const [home, setHome] = useState(asStr(match.home_score))
   const [away, setAway] = useState(asStr(match.away_score))
@@ -594,7 +616,7 @@ function MatchRow({
         <div className="match-gutter" aria-hidden="true" />
         <div className={`team home ${homeWin ? 'won' : ''}`}>
           {nbPitches > 1 && match.pitch != null && <span className="badge small">P{match.pitch}</span>}
-          <span className="team-name">{match.home_name ?? <span className="muted">TBD</span>}</span>
+          <TeamLabel team={homeTeam}><span className="team-name">{match.home_name ?? <span className="muted">TBD</span>}</span></TeamLabel>
           {homeWin && ' ✓'}
         </div>
         <div className="score-box">
@@ -622,7 +644,7 @@ function MatchRow({
         </div>
         <div className={`team away ${awayWin ? 'won' : ''}`}>
           {awayWin && '✓ '}
-          <span className="team-name">{match.away_name ?? <span className="muted">TBD</span>}</span>
+          <TeamLabel team={awayTeam}><span className="team-name">{match.away_name ?? <span className="muted">TBD</span>}</span></TeamLabel>
         </div>
         <div className="match-actions">
           {canSave && (
@@ -650,7 +672,10 @@ function MatchRow({
   )
 }
 
-function Bracket({ matches }: { matches: Match[] }) {
+function Bracket({ matches, playerTeams }: {
+  matches: Match[]
+  playerTeams: Map<number, (TDetail['participants'][number]['team'])>
+}) {
   const byStage = useMemo(() => {
     const map = new Map<string, Match[]>()
     for (const m of matches) {
@@ -678,7 +703,7 @@ function Bracket({ matches }: { matches: Match[] }) {
             {byStage.get(stage)!.map((m) => (
               <div className="match bracket-match" key={m.id}>
                 <div className={m.winner_id === m.home_id ? 'team won' : 'team'}>
-                  {m.home_name ?? <span className="muted">TBD</span>}
+                  <TeamLabel team={playerTeams.get(m.home_id ?? -1)}>{m.home_name ?? <span className="muted">TBD</span>}</TeamLabel>
                 </div>
                 <div className="score" style={{ textAlign: 'center' }}>
                   {m.played
@@ -693,7 +718,7 @@ function Bracket({ matches }: { matches: Match[] }) {
                   )}
                 </div>
                 <div className={`team away ${m.winner_id === m.away_id ? 'won' : ''}`}>
-                  {m.away_name ?? <span className="muted">TBD</span>}
+                  <TeamLabel team={playerTeams.get(m.away_id ?? -1)}>{m.away_name ?? <span className="muted">TBD</span>}</TeamLabel>
                 </div>
               </div>
             ))}

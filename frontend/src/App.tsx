@@ -9,9 +9,9 @@ import PlayerDetail from './pages/PlayerDetail'
 import Friendlies from './pages/Friendlies'
 import Compare from './pages/Compare'
 import ImportPage from './pages/ImportPage'
-import Users from './pages/Users'
+import Settings from './pages/Settings'
 
-const THEMES = [
+export const THEMES = [
   { id: 'floodlights', label: 'Floodlights' },
   { id: 'midnight', label: 'Midnight' },
   { id: 'terrace', label: 'Terrace' },
@@ -33,10 +33,18 @@ interface AuthState {
   user: AuthUser | null
 }
 
-const AuthCtx = createContext<{ auth: AuthState; canEdit: boolean; refresh: () => void }>({
+const AuthCtx = createContext<{
+  auth: AuthState
+  canEdit: boolean
+  refresh: () => void
+  theme: string
+  setTheme: (theme: string) => void
+}>({
   auth: { required: false, authed: true, setupRequired: false, user: null },
   canEdit: true,
   refresh: () => {},
+  theme: 'floodlights',
+  setTheme: () => {},
 })
 
 export const useAuth = () => useContext(AuthCtx)
@@ -97,10 +105,8 @@ export default function App() {
   }
 
   const canEdit = !auth.required || !auth.user || auth.user.role === 'admin'
-  const isAdmin = !!auth.user && auth.user.role === 'admin'
-
   return (
-    <AuthCtx.Provider value={{ auth, canEdit, refresh }}>
+    <AuthCtx.Provider value={{ auth, canEdit, refresh, theme, setTheme }}>
       <div className={`app${isTv ? ' tv-mode' : ''}`}>
         <a className="skip-link" href="#main">
           Skip to content
@@ -110,23 +116,13 @@ export default function App() {
             <BrandMark />
             FullTime Local
           </div>
-          <div className="theme-picker">
-            <label htmlFor="theme">Theme</label>
-            <select id="theme" value={theme} onChange={(e) => setTheme(e.target.value)}>
-              {THEMES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
           <nav>
             <NavLink to="/tournaments">Tournaments</NavLink>
             <NavLink to="/players">Players</NavLink>
             <NavLink to="/friendlies">Friendlies</NavLink>
             <NavLink to="/compare">Compare</NavLink>
             <NavLink to="/import">Data</NavLink>
-            {isAdmin && <NavLink to="/users">Users</NavLink>}
+            <NavLink to="/settings">Settings</NavLink>
           </nav>
           {auth.user && (
             <span className={`badge ${auth.user.role === 'admin' ? 'done' : ''}`} title={auth.user.username}>
@@ -160,7 +156,8 @@ export default function App() {
             <Route path="/friendlies" element={<Friendlies />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/import" element={<ImportPage />} />
-            <Route path="/users" element={<Users />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/users" element={<Navigate to="/settings#accounts" replace />} />
           </Routes>
         </main>
       </div>

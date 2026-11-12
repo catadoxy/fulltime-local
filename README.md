@@ -24,6 +24,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; 4 colour themes.
 - **TV mode** — a big-screen view that cycles standings, fixtures, brackets and results.
+- **Optional club crests** — connect football-data.org in Settings and assign clubs to players per tournament.
+- **Appearance and integration settings** — choose a local theme and configure optional football data.
 - **Time estimate** — planned duration from match length + changeover; the header shows elapsed/actual time, and new events pre-fill from past ones.
 - **Locked results** — a completed tournament is read-only; reopen it to fix a score, then close it again.
 - **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
@@ -147,7 +149,7 @@ Open the app with no users and no `FTL_PASSWORD` and everything is editable
 - set `FTL_PASSWORD` (legacy: log in as `admin` with that password), or
 - open the app and create the first admin account in the setup screen.
 
-Admins manage named accounts under **Users**: `viewer` accounts are read-only
+Admins manage named accounts under **Settings → Accounts**: `viewer` accounts are read-only
 (they can browse but every `POST`/`PATCH`/`DELETE` returns `403`), `admin`
 accounts can do everything. The last admin cannot be deleted or demoted.
 
@@ -178,4 +180,3 @@ Pin a version in production by using e.g. `ghcr.io/catadoxy/fulltime-local:0.3.0
 ## License
 
 [MIT](LICENSE)
-

@@ -43,6 +43,7 @@ class TournamentCreate(BaseModel):
     note: str | None = None
     format: TournamentFormat = "league"
     player_ids: list[int] = Field(default_factory=list)
+    participant_teams: dict[int, int] = Field(default_factory=dict)
     nb_pitches: int = Field(default=1, ge=1, le=64)
     settings: dict[str, Any] = Field(default_factory=dict)
     start_date: date | None = None
@@ -63,6 +64,15 @@ class GroupOut(BaseModel):
     sort_order: int
 
 
+class FootballTeamOut(BaseModel):
+    id: int
+    name: str
+    short_name: str | None = None
+    crest_url: str | None = None
+    competition_code: str
+    competition_name: str
+
+
 class ParticipantOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -70,6 +80,7 @@ class ParticipantOut(BaseModel):
     player: PlayerOut
     seed: int | None = None
     group_id: int | None = None
+    team: FootballTeamOut | None = None
 
 
 class TournamentOut(BaseModel):

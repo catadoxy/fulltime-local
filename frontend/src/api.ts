@@ -1,5 +1,7 @@
 import type {
   CompareResult,
+  FootballCompetition,
+  FootballTeam,
   Game,
   Match,
   Meta,
@@ -45,6 +47,23 @@ async function parseError(res: Response): Promise<string> {
 
 export const api = {
   meta: (signal?: AbortSignal) => http<Meta>('/api/meta', { signal }),
+  settings: (signal?: AbortSignal) =>
+    http<{ football_data_configured: boolean }>('/api/settings', { signal }),
+  saveFootballDataToken: (token: string) =>
+    http<{ football_data_configured: boolean }>('/api/settings/football-data', {
+      method: 'PUT',
+      body: JSON.stringify({ token }),
+    }),
+  removeFootballDataToken: () =>
+    http<void>('/api/settings/football-data', { method: 'DELETE' }),
+  footballCompetitions: (signal?: AbortSignal) =>
+    http<FootballCompetition[]>('/api/settings/football-data/competitions', { signal }),
+  footballTeams: (code: string, signal?: AbortSignal) =>
+    http<FootballTeam[]>(`/api/settings/football-data/competitions/${encodeURIComponent(code)}/teams`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+      signal,
+    }),
 
   players: (params?: { limit?: number; offset?: number; q?: string }, signal?: AbortSignal) => {
     const q = new URLSearchParams()

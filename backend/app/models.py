@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -64,6 +65,27 @@ class Tournament(Base):
     )
 
 
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
+
+
+class FootballTeam(Base):
+    """Locally cached football-data.org team identity and badge."""
+
+    __tablename__ = "football_teams"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)  # football-data.org team ID
+    name: Mapped[str] = mapped_column(String(160))
+    short_name: Mapped[str | None] = mapped_column(String(100), default=None)
+    crest_url: Mapped[str | None] = mapped_column(String(500), default=None)
+    competition_code: Mapped[str] = mapped_column(String(20), index=True)
+    competition_name: Mapped[str] = mapped_column(String(160))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class Group(Base):
     __tablename__ = "groups"
 
@@ -82,11 +104,13 @@ class Participant(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id", ondelete="CASCADE"), index=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("football_teams.id", ondelete="SET NULL"), default=None)
     seed: Mapped[int | None] = mapped_column(Integer, default=None)
     group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id", ondelete="SET NULL"), default=None)
 
     tournament: Mapped[Tournament] = relationship(back_populates="participants")
     player: Mapped[Player] = relationship()
+    team: Mapped[FootballTeam | None] = relationship()
 
 
 class Match(Base):

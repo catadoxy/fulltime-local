@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
+import { TeamLabel } from '../components/TeamLabel'
 import { formatDuration, parseTimestamp } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { Match, Table, TournamentDetail as TDetail } from '../types'
@@ -33,6 +34,7 @@ function stagesOf(m: Match) {
 function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
   const panels: Panel[] = []
   const names = new Map(t.participants.map((p) => [p.player_id, p.player.name]))
+  const teams = new Map(t.participants.map((p) => [p.player_id, p.team]))
 
   if (t.champion_id) {
     panels.push({
@@ -43,7 +45,9 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
           <div className="tv-trophy" aria-hidden="true">
             🏆
           </div>
-          <div className="tv-champion-name">{names.get(t.champion_id) ?? '—'}</div>
+          <div className="tv-champion-name">
+            <TeamLabel team={teams.get(t.champion_id)}>{names.get(t.champion_id) ?? '—'}</TeamLabel>
+          </div>
           <div className="tv-champion-sub">{t.name}</div>
         </div>
       ),
@@ -79,7 +83,7 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
                   {table.rows.map((row, i) => (
                     <tr key={row.player_id} className={i === 0 ? 'leader' : undefined}>
                       <td className="num">{i + 1}</td>
-                      <td>{row.player_name}</td>
+                      <td><TeamLabel team={teams.get(row.player_id)}>{row.player_name}</TeamLabel></td>
                       <td className="num">{row.played}</td>
                       <td className="num">{row.won}</td>
                       <td className="num">{row.drawn}</td>
@@ -119,9 +123,9 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
           {next.map((m) => (
             <div className="tv-match" key={m.id}>
               <div className="tv-match-spacer" aria-hidden="true" />
-              <div className="tv-side home">{m.home_name}</div>
+              <div className="tv-side home"><TeamLabel team={teams.get(m.home_id ?? -1)}>{m.home_name}</TeamLabel></div>
               <div className="tv-vs">vs</div>
-              <div className="tv-side">{m.away_name}</div>
+              <div className="tv-side"><TeamLabel team={teams.get(m.away_id ?? -1)}>{m.away_name}</TeamLabel></div>
               <div className="tv-match-meta">
                 {STAGE_LABELS[m.stage] ?? m.stage}
                 {m.stage !== 'final' && m.round_number ? ` · R${m.round_number}` : ''}
@@ -157,7 +161,7 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
                 {byStage.get(stage)!.map((m) => (
                   <div className="tv-bracket-match" key={m.id}>
                     <div className={m.winner_id === m.home_id ? 'won' : ''}>
-                      {m.home_name ?? '—'}
+                      <TeamLabel team={teams.get(m.home_id ?? -1)}>{m.home_name ?? '—'}</TeamLabel>
                     </div>
                     <div className="tv-bracket-score">
                       {m.played
@@ -172,7 +176,7 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
                       )}
                     </div>
                     <div className={m.winner_id === m.away_id ? 'won' : ''}>
-                      {m.away_name ?? '—'}
+                      <TeamLabel team={teams.get(m.away_id ?? -1)}>{m.away_name ?? '—'}</TeamLabel>
                     </div>
                   </div>
                 ))}
@@ -204,13 +208,13 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
             <div className="tv-match result" key={m.id}>
               <div className="tv-match-spacer" aria-hidden="true" />
               <div className={`tv-side home ${m.winner_id === m.home_id ? 'won' : ''}`}>
-                {m.home_name}
+                <TeamLabel team={teams.get(m.home_id ?? -1)}>{m.home_name}</TeamLabel>
               </div>
               <div className="tv-score">
                 {m.home_score}–{m.away_score}
               </div>
               <div className={`tv-side ${m.winner_id === m.away_id ? 'won' : ''}`}>
-                {m.away_name}
+                <TeamLabel team={teams.get(m.away_id ?? -1)}>{m.away_name}</TeamLabel>
               </div>
               <div className="tv-match-meta">
                 {STAGE_LABELS[m.stage] ?? m.stage}

@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from . import auth
 from .config import APP_NAME, APP_VERSION, FRONTEND_DIR
 from .database import Base, SessionLocal, engine
-from .routers import compare, games, imports, players, tournaments, users
+from .routers import compare, games, imports, players, settings, tournaments, users
 
 
 @asynccontextmanager
@@ -53,6 +53,11 @@ def _migrate() -> None:
             conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN started_at DATETIME")
         if tcols and "finished_at" not in tcols:
             conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN finished_at DATETIME")
+        pcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(participants)")}
+        if pcols and "team_id" not in pcols:
+            conn.exec_driver_sql(
+                "ALTER TABLE participants ADD COLUMN team_id INTEGER REFERENCES football_teams(id) ON DELETE SET NULL"
+            )
 
 
 @app.get("/api/health")
@@ -62,6 +67,7 @@ def health():
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(settings.router)
 app.include_router(players.router)
 app.include_router(tournaments.router)
 app.include_router(games.router)

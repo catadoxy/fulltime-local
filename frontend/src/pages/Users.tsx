@@ -77,7 +77,7 @@ export default function Users() {
 
   return (
     <div>
-      <h1>Users</h1>
+      <h2 id="accounts" style={{ marginTop: 0 }}>Accounts</h2>
       <p className="muted">
         Admins can do everything. Viewers are read-only — they can browse but not create, edit, or
         delete anything.

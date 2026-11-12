@@ -44,6 +44,18 @@ def participant_out(p: Participant) -> dict:
         },
         "seed": p.seed,
         "group_id": p.group_id,
+        "team": (
+            {
+                "id": p.team.id,
+                "name": p.team.name,
+                "short_name": p.team.short_name,
+                "crest_url": p.team.crest_url,
+                "competition_code": p.team.competition_code,
+                "competition_name": p.team.competition_name,
+            }
+            if p.team
+            else None
+        ),
     }
 
 
