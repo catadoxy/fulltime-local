@@ -162,6 +162,8 @@ class Game(Base):
     played_at: Mapped[date] = mapped_column(Date, default=date.today)
     home_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
     away_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    home_team_id: Mapped[int | None] = mapped_column(ForeignKey("football_teams.id", ondelete="SET NULL"), default=None)
+    away_team_id: Mapped[int | None] = mapped_column(ForeignKey("football_teams.id", ondelete="SET NULL"), default=None)
     home_score: Mapped[int] = mapped_column(Integer, default=0)
     away_score: Mapped[int] = mapped_column(Integer, default=0)
     note: Mapped[str | None] = mapped_column(String(500), default=None)
@@ -169,6 +171,8 @@ class Game(Base):
 
     home: Mapped[Player] = relationship(foreign_keys=[home_id])
     away: Mapped[Player] = relationship(foreign_keys=[away_id])
+    home_team: Mapped[FootballTeam | None] = relationship(foreign_keys=[home_team_id])
+    away_team: Mapped[FootballTeam | None] = relationship(foreign_keys=[away_team_id])
 
 
 class User(Base):

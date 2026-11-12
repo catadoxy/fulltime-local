@@ -198,6 +198,10 @@ export interface Game {
   played_at: string
   home_id: number
   away_id: number
+  home_team_id?: number | null
+  away_team_id?: number | null
+  home_team?: FootballTeam | null
+  away_team?: FootballTeam | null
   home_name: string | null
   away_name: string | null
   home_score: number

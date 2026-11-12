@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
+import FootballTeamAssignments from '../components/FootballTeamAssignments'
 import { ErrorBanner, SearchInput, SortableTh, TableWrap, formatDate } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
-import type { FootballCompetition, FootballTeam, Player, Tournament, TournamentFormat, TournamentSettings } from '../types'
+import type { Player, Tournament, TournamentFormat, TournamentSettings } from '../types'
 
 type SortKey = 'name' | 'format' | 'status' | 'champion' | 'players' | 'date'
 
@@ -34,14 +35,7 @@ export default function Tournaments() {
   const timeTouchedRef = useRef(false)
   const [selected, setSelected] = useState<number[]>([])
   const [footballConfigured, setFootballConfigured] = useState(false)
-  const [showTeamOptions, setShowTeamOptions] = useState(false)
-  const [competitions, setCompetitions] = useState<FootballCompetition[]>([])
-  const [competitionCode, setCompetitionCode] = useState('')
-  const [footballTeams, setFootballTeams] = useState<FootballTeam[]>([])
-  const [teamAssignments, setTeamAssignments] = useState<Record<number, number>>({})
-  const [loadingCompetitions, setLoadingCompetitions] = useState(false)
-  const [loadingTeams, setLoadingTeams] = useState(false)
-  const teamRequest = useRef<AbortController | null>(null)
+  const [teamAssignments, setTeamAssignments] = useState<Record<string, number>>({})
   const [settings, setSettings] = useState<TournamentSettings>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -95,54 +89,11 @@ export default function Tournaments() {
       setSelected((prev) => prev.filter((id) => id !== playerId))
       setTeamAssignments((assignments) => {
         const next = { ...assignments }
-        delete next[playerId]
+        delete next[String(playerId)]
         return next
       })
     } else {
       setSelected((prev) => [...prev, playerId])
-    }
-  }
-
-  async function toggleTeamOptions() {
-    const opening = !showTeamOptions
-    setShowTeamOptions(opening)
-    setError('')
-    if (!opening || competitions.length) return
-    setLoadingCompetitions(true)
-    try {
-      const data = await api.footballCompetitions()
-      setCompetitions(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setLoadingCompetitions(false)
-    }
-  }
-
-  async function loadCompetitionTeams(code: string) {
-    teamRequest.current?.abort()
-    setCompetitionCode(code)
-    if (!code) {
-      setLoadingTeams(false)
-      return
-    }
-    const ctrl = new AbortController()
-    teamRequest.current = ctrl
-    setLoadingTeams(true)
-    setError('')
-    try {
-      const data = await api.footballTeams(code, ctrl.signal)
-      if (!ctrl.signal.aborted) {
-        setFootballTeams((current) => {
-          const merged = new Map(current.map((team) => [team.id, team]))
-          data.forEach((team) => merged.set(team.id, team))
-          return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name))
-        })
-      }
-    } catch (err) {
-      if (!ctrl.signal.aborted) setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      if (!ctrl.signal.aborted) setLoadingTeams(false)
     }
   }
 
@@ -389,71 +340,21 @@ export default function Tournaments() {
           </div>
 
           {footballConfigured && (
-            <section className="team-assignment-section" aria-label="Optional club team assignment">
-              <div className="row between">
-                <div>
-                  <h3 style={{ margin: '1rem 0 0.2rem' }}>Club teams <span className="muted small">(optional)</span></h3>
-                  <p className="muted small" style={{ margin: 0 }}>
-                    Assign one club to each player. Switch competitions to add clubs from different leagues; loaded clubs stay available.
-                  </p>
-                </div>
-                <button type="button" className="btn" onClick={() => void toggleTeamOptions()}>
-                  {showTeamOptions ? 'Hide team options' : 'Choose teams'}
-                </button>
-              </div>
-              {showTeamOptions && (
-                <div className="team-assignment-panel">
-                  <div style={{ maxWidth: 420 }}>
-                    <label htmlFor="team-competition">Competition</label>
-                    <select
-                      id="team-competition"
-                      className="full"
-                      value={competitionCode}
-                      disabled={loadingCompetitions}
-                      onChange={(e) => void loadCompetitionTeams(e.target.value)}
-                    >
-                      <option value="">{loadingCompetitions ? 'Loading competitions…' : 'Choose a competition'}</option>
-                      {competitions.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  {loadingTeams && <p className="muted small">Loading teams…</p>}
-                  {competitionCode && !loadingTeams && footballTeams.length === 0 && (
-                    <p className="muted small">No teams returned for this competition.</p>
-                  )}
-                  {selected.length > 0 && footballTeams.length > 0 && (
-                    <div className="team-assignment-list">
-                      {selected.map((playerId) => {
-                        const player = players.find((p) => p.id === playerId)
-                        const assignedId = teamAssignments[playerId]
-                        const assigned = footballTeams.find((team) => team.id === assignedId)
-                        return (
-                          <div className="team-assignment-row" key={playerId}>
-                            <span className="team-assignment-player">{player?.name}</span>
-                            <select
-                              aria-label={`Club team for ${player?.name ?? 'player'}`}
-                              value={assignedId ?? ''}
-                              onChange={(e) => {
-                                const next = { ...teamAssignments }
-                                if (e.target.value) next[playerId] = Number(e.target.value)
-                                else delete next[playerId]
-                                setTeamAssignments(next)
-                              }}
-                            >
-                              <option value="">No club</option>
-                              {footballTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-                            </select>
-                            {assigned?.crest_url ? (
-                              <img className="team-crest" src={assigned.crest_url} alt="" loading="lazy" />
-                            ) : <span className="team-crest-placeholder" aria-hidden="true" />}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                  {selected.length === 0 && <p className="muted small">Select players first to assign club teams.</p>}
-                </div>
-              )}
-            </section>
+            <FootballTeamAssignments
+              assignments={selected.map((playerId) => ({
+                key: String(playerId),
+                label: players.find((player) => player.id === playerId)?.name ?? 'Player',
+              }))}
+              values={teamAssignments}
+              onChange={(key, teamId) => {
+                setTeamAssignments((current) => {
+                  const next = { ...current }
+                  if (teamId == null) delete next[key]
+                  else next[key] = teamId
+                  return next
+                })
+              }}
+            />
           )}
 
           <div className="row" style={{ marginTop: '1rem' }}>

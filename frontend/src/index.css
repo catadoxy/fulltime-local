@@ -366,6 +366,8 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .friendly-table td.away { text-align: left; }
 .friendly-table td.score { font-weight: 650; font-variant-numeric: tabular-nums; }
 .friendly-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
+.friendly-tip { margin: 0 0 0.75rem; }
+.friendly-pagination { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.8rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
 
 /* ---- Badges ---- */
 .badge {
@@ -426,9 +428,20 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .team-assignment-section { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
 .team-assignment-panel { display: grid; gap: 0.8rem; margin-top: 0.75rem; padding: 0.85rem; border-radius: var(--radius); background: var(--surface-2); }
 .team-assignment-list { display: grid; gap: 0.45rem; }
-.team-assignment-row { display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 1fr) 1.5rem; align-items: center; gap: 0.65rem; }
+.team-assignment-row { display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(220px, 1.2fr); align-items: center; gap: 0.65rem; }
 .team-assignment-player { font-weight: 600; }
-.team-crest-placeholder { width: 1.35rem; height: 1.35rem; }
+.team-picker { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; min-width: 0; }
+.team-picker input { flex: 1 1 140px; min-width: 120px; }
+.team-none { white-space: nowrap; }
+.team-selected { display: inline-flex; align-items: center; gap: 0.35rem; max-width: 100%; padding: 0.18rem 0.45rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.team-selected .team-crest { width: 1.1rem; height: 1.1rem; }
+.team-selected-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-clear { padding: 0 0.18rem; border: 0; background: transparent; color: var(--muted); line-height: 1; }
+.team-clear:hover { color: var(--red); background: transparent; }
+.team-search-results { position: absolute; z-index: 30; top: calc(100% + 0.2rem); right: 0; left: 0; max-height: 15rem; overflow-y: auto; padding: 0.25rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+.team-search-option { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.45rem 0.55rem; border: 0; background: transparent; text-align: left; }
+.team-search-option:hover { background: var(--surface-2); border-color: transparent; }
+.team-search-results > .muted { display: block; padding: 0.45rem 0.55rem; }
 
 /* ---- Standings / stats ---- */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.65rem; }
@@ -688,8 +701,7 @@ th.num .th-button { margin-left: auto; }
   .create-form .num-input {
     width: 100%;
   }
-  .team-assignment-row { grid-template-columns: 1fr 1.5rem; }
-  .team-assignment-player { grid-column: 1 / -1; }
+  .team-assignment-row { grid-template-columns: 1fr; }
 
   .match {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -763,6 +775,8 @@ th.num .th-button { margin-left: auto; }
     grid-area: delete;
     text-align: right;
   }
+  .friendly-pagination { flex-direction: column; align-items: stretch; }
+  .friendly-pagination .row { justify-content: space-between; }
 
   .table-wrap.wide > .tournaments-table,
   .table-wrap.wide > .standings-table,

@@ -368,6 +368,8 @@ def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -
                 values = {
                     "home_id": home_id,
                     "away_id": away_id,
+                    "home_team_id": team_map.get(_value(row, "home_team_id")),
+                    "away_team_id": team_map.get(_value(row, "away_team_id")),
                     "home_score": home_score,
                     "away_score": away_score,
                     "played_at": played_at,

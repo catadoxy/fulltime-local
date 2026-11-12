@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
+import FootballTeamAssignments from '../components/FootballTeamAssignments'
+import { TeamLabel } from '../components/TeamLabel'
 import { ConfirmDialog, EmptyState, ErrorBanner } from '../components/ui'
 import type { Game, Player } from '../types'
 
 const today = () => new Date().toISOString().slice(0, 10)
+const PAGE_SIZE = 10
 
 export default function Friendlies() {
   const { canEdit } = useAuth()
@@ -17,6 +20,9 @@ export default function Friendlies() {
   const [awayScore, setAwayScore] = useState('')
   const [playedAt, setPlayedAt] = useState(today())
   const [note, setNote] = useState('')
+  const [footballConfigured, setFootballConfigured] = useState(false)
+  const [teamAssignments, setTeamAssignments] = useState<Record<string, number>>({})
+  const [page, setPage] = useState(1)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -26,13 +32,15 @@ export default function Friendlies() {
   const load = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
-      const [gs, ps] = await Promise.all([
-        api.games({ limit: 500 }, signal),
+      const [gs, ps, appSettings] = await Promise.all([
+        api.games({ limit: 1000 }, signal),
         api.players({ limit: 500 }, signal),
+        api.settings(signal),
       ])
       if (!signal?.aborted) {
         setGames(gs)
         setPlayers(ps)
+        setFootballConfigured(appSettings.football_data_configured)
       }
     } catch (e) {
       if (!signal?.aborted) setError(e instanceof Error ? e.message : String(e))
@@ -47,6 +55,23 @@ export default function Friendlies() {
     return () => ctrl.abort()
   }, [])
 
+  const pageCount = Math.max(1, Math.ceil(games.length / PAGE_SIZE))
+  const visibleGames = games.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount)
+  }, [page, pageCount])
+
+  function updatePlayer(side: 'home' | 'away', playerId: string) {
+    if (side === 'home') setHomeId(playerId)
+    else setAwayId(playerId)
+    setTeamAssignments((current) => {
+      const next = { ...current }
+      delete next[side]
+      return next
+    })
+  }
+
   async function add(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -58,6 +83,8 @@ export default function Friendlies() {
       await api.createGame({
         home_id: Number(homeId),
         away_id: Number(awayId),
+        home_team_id: teamAssignments.home ?? null,
+        away_team_id: teamAssignments.away ?? null,
         home_score: Number(homeScore),
         away_score: Number(awayScore),
         played_at: playedAt,
@@ -66,6 +93,8 @@ export default function Friendlies() {
       setHomeScore('')
       setAwayScore('')
       setNote('')
+      setTeamAssignments({})
+      setPage(1)
       void load()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -103,7 +132,7 @@ export default function Friendlies() {
         <div className="row" style={{ alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div>
             <label htmlFor="fr-home">Home</label>
-            <select id="fr-home" value={homeId} onChange={(e) => setHomeId(e.target.value)}>
+            <select id="fr-home" value={homeId} onChange={(e) => updatePlayer('home', e.target.value)}>
               <option value="">—</option>
               {players.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -141,7 +170,7 @@ export default function Friendlies() {
           </div>
           <div>
             <label htmlFor="fr-away">Away</label>
-            <select id="fr-away" value={awayId} onChange={(e) => setAwayId(e.target.value)}>
+            <select id="fr-away" value={awayId} onChange={(e) => updatePlayer('away', e.target.value)}>
               <option value="">—</option>
               {players.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -169,11 +198,32 @@ export default function Friendlies() {
             {busy ? 'Adding…' : 'Add friendly'}
           </button>
         </div>
+        {canEdit && footballConfigured && (homeId || awayId) && (
+          <FootballTeamAssignments
+            assignments={[
+              ...(homeId ? [{ key: 'home', label: `${players.find((p) => String(p.id) === homeId)?.name ?? 'Home'} (home)` }] : []),
+              ...(awayId ? [{ key: 'away', label: `${players.find((p) => String(p.id) === awayId)?.name ?? 'Away'} (away)` }] : []),
+            ]}
+            values={teamAssignments}
+            onChange={(key, teamId) => {
+              setTeamAssignments((current) => {
+                const next = { ...current }
+                if (teamId == null) delete next[key]
+                else next[key] = teamId
+                return next
+              })
+            }}
+          />
+        )}
         {players.length < 2 && <div className="muted small">Add at least two players first.</div>}
       </form>
       )}
       <ErrorBanner message={error} onRetry={() => load()} />
 
+      <div className="muted small friendly-tip">
+        Tip: a player's full record (tournaments + friendlies) is on their{' '}
+        <Link to="/players">profile</Link>.
+      </div>
       <div className="panel">
         <table className="friendly-table">
           <thead>
@@ -189,17 +239,21 @@ export default function Friendlies() {
             </tr>
           </thead>
           <tbody>
-            {games.map((g) => {
+            {visibleGames.map((g) => {
               const homeWin = g.home_score > g.away_score
               const awayWin = g.away_score > g.home_score
               return (
                 <tr key={g.id}>
                   <td className="muted small">{g.played_at}</td>
-                  <td className={`home ${homeWin ? 'won' : ''}`}>{g.home_name}</td>
+                  <td className={`home ${homeWin ? 'won' : ''}`}>
+                    <TeamLabel team={g.home_team}>{g.home_name}</TeamLabel>
+                  </td>
                   <td className="score">
                     {g.home_score}–{g.away_score}
                   </td>
-                  <td className={`away ${awayWin ? 'won' : ''}`}>{g.away_name}</td>
+                  <td className={`away ${awayWin ? 'won' : ''}`}>
+                    <TeamLabel team={g.away_team}>{g.away_name}</TeamLabel>
+                  </td>
                   <td className="muted small">{g.note || '—'}</td>
                   <td className="friendly-actions">
                     <Link className="btn" to={`/compare?a=${g.home_id}&b=${g.away_id}`}>
@@ -221,11 +275,22 @@ export default function Friendlies() {
         ) : (
           games.length === 0 && <EmptyState>No games recorded yet.</EmptyState>
         )}
-      </div>
-
-      <div className="muted small">
-        Tip: a player's full record (tournaments + friendlies) is on their{' '}
-        <Link to="/players">profile</Link>.
+        {!loading && games.length > PAGE_SIZE && (
+          <div className="friendly-pagination">
+            <span className="muted small">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, games.length)} of {games.length}
+            </span>
+            <div className="row">
+              <button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                Previous
+              </button>
+              <span className="muted small">Page {page} of {pageCount}</span>
+              <button type="button" disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {pendingDelete && (
         <ConfirmDialog

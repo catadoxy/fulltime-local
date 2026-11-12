@@ -224,14 +224,28 @@ def test_double_round_league():
 def test_games():
     _reset()
     ids = _make_players(3)
+    db = SessionLocal()
+    try:
+        db.add(FootballTeam(
+            id=64, name="Liverpool FC", short_name="Liverpool", crest_url="https://example.test/liverpool.png",
+            competition_code="PL", competition_name="Premier League",
+        ))
+        db.commit()
+    finally:
+        db.close()
     r = client.post(
         "/api/games",
-        json={"home_id": ids[0], "away_id": ids[1], "home_score": 2, "away_score": 1},
+        json={
+            "home_id": ids[0], "away_id": ids[1], "home_team_id": 64,
+            "home_score": 2, "away_score": 1,
+        },
     )
     assert r.status_code == 201, r.text
     games = client.get("/api/games").json()
     assert len(games) == 1
     assert games[0]["home_name"] and games[0]["away_name"]
+    assert games[0]["home_team"]["name"] == "Liverpool FC"
+    assert games[0]["home_team"]["crest_url"] == "https://example.test/liverpool.png"
 
     # Games count toward friendly stats and friendly Elo (but not tournament Elo).
     w_stats = client.get(f"/api/players/{ids[0]}/stats").json()

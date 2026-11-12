@@ -146,6 +146,8 @@ class ResultIn(BaseModel):
 class GameCreate(BaseModel):
     home_id: int
     away_id: int
+    home_team_id: int | None = None
+    away_team_id: int | None = None
     home_score: int = Field(ge=0, le=999)
     away_score: int = Field(ge=0, le=999)
     played_at: date | None = None
@@ -158,8 +160,12 @@ class GameOut(BaseModel):
     played_at: date
     home_id: int
     away_id: int
+    home_team_id: int | None = None
+    away_team_id: int | None = None
     home_name: str | None = None
     away_name: str | None = None
+    home_team: FootballTeamOut | None = None
+    away_team: FootballTeamOut | None = None
     home_score: int
     away_score: int
     note: str | None = None

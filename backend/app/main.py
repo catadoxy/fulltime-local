@@ -61,6 +61,15 @@ def _migrate() -> None:
             conn.exec_driver_sql(
                 "ALTER TABLE participants ADD COLUMN team_id INTEGER REFERENCES football_teams(id) ON DELETE SET NULL"
             )
+        gcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(games)")}
+        if gcols and "home_team_id" not in gcols:
+            conn.exec_driver_sql(
+                "ALTER TABLE games ADD COLUMN home_team_id INTEGER REFERENCES football_teams(id) ON DELETE SET NULL"
+            )
+        if gcols and "away_team_id" not in gcols:
+            conn.exec_driver_sql(
+                "ALTER TABLE games ADD COLUMN away_team_id INTEGER REFERENCES football_teams(id) ON DELETE SET NULL"
+            )
 
 
 @app.get("/api/health")

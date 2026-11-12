@@ -17,7 +17,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Auto-scheduling** across a set number of pitches/TVs, giving players fair rest.
 - **Results & standings** — enter scores, tables update, knockouts advance, with a
   bracket view and an automatic champion.
-- **Friendlies** — record casual one-off matches alongside tournaments.
+- **Friendlies** — record casual one-off matches alongside tournaments, optionally assign clubs to each side, and
+  browse match history with pagination.
 - **Player profiles** — nickname + real name, plus separate tournament and
   friendly tabs.
 - **Compare** any two players (head-to-head and side-by-side), or jump straight from a friendly to its players'
@@ -26,7 +27,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; choose from 4 themes in Settings.
 - **TV mode** — a big-screen view that cycles standings, fixtures, brackets and results.
-- **Optional club crests** — connect football-data.org in Settings and assign clubs to players per tournament;
+- **Optional club crests** — connect football-data.org in Settings and assign clubs to tournament participants or
+  friendly sides;
   multiple players can share a club.
 - **Settings** — theme, optional football data integration, account management, full backup and FullTime backup
   import.
@@ -51,10 +53,12 @@ _Screenshots use mock data._
 | Player profile (tournaments / friendlies tabs) | Compare two players |
 | ![Friendlies with compare actions](docs/screenshots/friendlies-compare.png) | ![Comparison opened from a friendly](docs/screenshots/friendly-comparison.png) |
 | Friendly rows have a direct Compare action | The two players are preselected in the comparison |
-| ![Optional club assignment](docs/screenshots/team-assignment.png) | ![Settings](docs/screenshots/settings.png) |
-| Assign optional club crests while creating a tournament | Theme, football data, backup/import and accounts |
-| ![Viewer settings](docs/screenshots/viewer-settings.png) | ![TV mode](docs/screenshots/tv.png) |
-| Viewers see only the theme setting | TV mode for the venue screen |
+| ![Tournament team assignment](docs/screenshots/team-assignment.png) | ![Friendly team assignment and pagination](docs/screenshots/friendly-team-assignment.png) |
+| Search across competitions when choosing a tournament club | Optional club badges on a friendly plus paginated match history |
+| ![Settings](docs/screenshots/settings.png) | ![Viewer settings](docs/screenshots/viewer-settings.png) |
+| Theme, football data, backup/import and accounts | Viewers see only the theme setting |
+| ![TV mode](docs/screenshots/tv.png) | |
+| TV mode for the venue screen | |
 
 ### Settings and club badges
 
@@ -62,10 +66,11 @@ _Screenshots use mock data._
 - Admins can connect a football-data.org token under **Settings → Football data**. The token is encrypted in the
   local database and is never sent to the browser. Team lookup is hidden until a token is configured; competition
   and team data are requested only when the optional team picker is used.
-- During tournament setup, load one or more supported competitions and optionally assign a club to each selected
-  player (for example, Real Madrid and PSG in the same tournament). Loaded clubs stay available when switching
-  competitions. Club IDs, names and crest URLs are cached locally and shown in fixtures, standings, brackets and TV
-  mode; badge images load from their provider URLs. Disconnecting the provider keeps existing assignments intact.
+- During tournament setup or while recording a friendly, load one or more supported competitions and optionally
+  assign clubs to the players (for example, Real Madrid and PSG in the same tournament). Team search shows results
+  only after typing; loaded clubs stay available when switching competitions. Club IDs, names and crest URLs are
+  cached locally and shown in fixtures, friendlies, standings, brackets and TV mode; badge images load from provider
+  URLs. Disconnecting the provider keeps existing assignments intact.
 - **Settings → Backup & import** contains the full database backup and FullTime backup import.
   **Settings → Accounts** is admin-only.
 - Viewers can browse the app but see only **Appearance** in Settings.
