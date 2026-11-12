@@ -144,7 +144,8 @@ export default function TournamentDetail() {
     if (!t) return
     setBusy(true)
     try {
-      await api.closeTournament(t.id)
+      const closed = await api.closeTournament(t.id)
+      setT(closed)
       setConfirmClose(false)
       void load()
     } catch (e) {
@@ -178,7 +179,8 @@ export default function TournamentDetail() {
   const finishedAt = parseTimestamp(t.finished_at)
   // While running, the clock starts at creation. Completed events keep the
   // actual play duration (first result -> finish) so timing stays meaningful.
-  const clockStart = t.status === 'completed' ? startedAt : (createdAt ?? startedAt)
+  // Start at creation and freeze at the server-stamped close time.
+  const clockStart = createdAt ?? startedAt
   const clockEnd = t.status === 'completed' ? finishedAt : new Date(now)
   const elapsedMinutes =
     clockStart && clockEnd
