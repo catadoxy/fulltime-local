@@ -51,6 +51,7 @@ class Tournament(Base):
     # Actual wall-clock timestamps (set from the first result / on completion).
     started_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    elapsed_minutes_override: Mapped[int | None] = mapped_column(Integer, default=None)
     champion_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 

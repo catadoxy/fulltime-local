@@ -157,11 +157,11 @@ export const api = {
   clearResult: (tid: number, mid: number) =>
     http<Match>(`/api/tournaments/${tid}/matches/${mid}/result`, { method: 'DELETE' }),
 
-  importLegacy: async (file: File, replace = false) => {
+  importFullTimeBackup: async (file: File, replace = false) => {
     const form = new FormData()
     form.append('file', file)
     form.append('replace', replace ? 'true' : 'false')
-    const res = await fetch(`${BASE}/api/import/legacy`, {
+    const res = await fetch(`${BASE}/api/import/fulltime`, {
       method: 'POST',
       body: form,
       credentials: 'same-origin',

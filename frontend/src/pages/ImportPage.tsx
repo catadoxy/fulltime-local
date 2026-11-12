@@ -8,8 +8,8 @@ interface ImportResult {
   tournaments: number
   matches: number
   players: number
+  games?: number
   duplicates?: number
-  skipped?: number
   replaced?: boolean
 }
 
@@ -28,7 +28,7 @@ export default function ImportPage({ embedded = false }: { embedded?: boolean })
     setError('')
     setResult(null)
     try {
-      const r = (await api.importLegacy(file, replace)) as ImportResult
+      const r = (await api.importFullTimeBackup(file, replace)) as ImportResult
       setResult(r)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -64,7 +64,8 @@ export default function ImportPage({ embedded = false }: { embedded?: boolean })
         <h2 style={{ marginTop: 0 }}>Export</h2>
         <p className="muted">
           Download a full, portable backup of this app's database (all players and tournaments).
-          Keep it somewhere safe — to restore, drop it into <code>./data/fulltime.db</code>.
+          To restore the complete database, drop it into <code>./data/fulltime.db</code>. You can also import its
+          tournament data below; accounts and API settings on this installation are kept.
         </p>
         <a className="btn primary" href={api.exportBackupUrl()}>
           ⬇ Download backup (.db)
@@ -72,22 +73,22 @@ export default function ImportPage({ embedded = false }: { embedded?: boolean })
       </div>
 
       <div className="panel">
-        <h2 style={{ marginTop: 0 }}>Import a legacy database</h2>
+        <h2 style={{ marginTop: 0 }}>Import a FullTime Local backup</h2>
         {!canEdit ? (
           <p className="muted">Viewers cannot import. Ask an admin.</p>
         ) : (
           <>
             <p className="muted">
-              Upload an unencrypted SQLite <code>.sqlite</code> database (the source app's schema).
-              Imported tournaments are added as completed history. Encrypted exports aren't supported.
-              Tournaments already imported from the same file are skipped, so re-importing is safe.
+              Upload a SQLite <code>.db</code> backup exported from FullTime Local. Players, tournaments,
+              matches, friendlies and club crests are imported. Players with the same name are reused, and
+              tournaments already present in this backup are skipped on repeat imports.
             </p>
         <form onSubmit={submit}>
           <div className="row" style={{ marginBottom: '0.75rem' }}>
             <input
               type="file"
               accept=".db,.sqlite,.sqlite3,application/octet-stream"
-              aria-label="Legacy SQLite file"
+              aria-label="FullTime Local backup file"
               onChange={(e) => {
                 setFile(e.target.files?.[0] ?? null)
                 setResult(null)
@@ -95,12 +96,12 @@ export default function ImportPage({ embedded = false }: { embedded?: boolean })
               }}
             />
             <button className="primary" type="submit" disabled={!file || busy}>
-              {busy ? 'Importing…' : 'Import'}
+              {busy ? 'Importing…' : 'Import backup'}
             </button>
           </div>
           <label className="row" style={{ color: 'var(--text)', gap: '0.5rem' }}>
             <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
-            Replace all existing data (clean slate)
+            Replace existing tournament data (clean slate)
           </label>
           {file && (
             <p className="muted small">
@@ -113,20 +114,18 @@ export default function ImportPage({ embedded = false }: { embedded?: boolean })
         <ErrorBanner message={error} />
         {result && (
           <div className="banner" style={{ marginTop: '1rem' }}>
-            {result.replaced ? 'Replaced everything. ' : ''}
-            Imported {result.tournaments} tournaments, {result.matches} matches and {result.players} new
-            players.
-            {result.duplicates ? ` ${result.duplicates} already-imported tournaments skipped.` : ''}
-            {result.skipped ? ` ${result.skipped} skipped (no matches).` : ''}{' '}
+            {result.replaced ? 'Replaced tournament data. ' : ''}
+            Imported {result.tournaments} tournaments, {result.matches} matches, {result.games ?? 0} friendlies and {result.players} new players.
+            {result.duplicates ? ` ${result.duplicates} duplicate records skipped.` : ''}{' '}
             <Link to="/tournaments">View tournaments →</Link>
           </div>
         )}
       </div>
       {confirmReplace && (
         <ConfirmDialog
-          title="Replace all data?"
-          message="Replace ALL current data (players, tournaments, matches, friendlies) with this file? This cannot be undone."
-          confirmLabel="Replace everything"
+          title="Replace tournament data?"
+          message="Replace all players, tournaments, matches, friendlies and cached club teams with this backup? User accounts and API settings on this installation will remain unchanged. This cannot be undone."
+          confirmLabel="Replace tournament data"
           onConfirm={doImport}
           onCancel={() => setConfirmReplace(false)}
           busy={busy}

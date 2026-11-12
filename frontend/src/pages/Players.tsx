@@ -209,7 +209,7 @@ export default function Players() {
             <EmptyState>
               {debouncedQuery
                 ? `No players match “${debouncedQuery}”.`
-                : 'No players yet. Add some above, or import a legacy database.'}
+                : 'No players yet. Add some above, or import a FullTime Local backup from Settings.'}
             </EmptyState>
           )
         )}

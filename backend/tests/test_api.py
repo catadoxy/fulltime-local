@@ -1,9 +1,11 @@
 import sqlite3
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
-from app.database import Base, engine
+from app.database import Base, SessionLocal, engine
 from app.main import app
+from app.models import AppSetting, FootballTeam, Participant
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -368,68 +370,98 @@ def test_player_real_name():
     assert client.get("/api/players").json()[0]["real_name"] == "New Name"
 
 
-def test_import_rejects_non_sqlite():
+def test_fulltime_import_rejects_non_sqlite():
     _reset()
     resp = client.post(
-        "/api/import/legacy",
+        "/api/import/fulltime",
         files={"file": ("export.db", b"not a sqlite database at all", "application/octet-stream")},
     )
     assert resp.status_code == 400
 
 
-def _make_legacy_db(path):
-    con = sqlite3.connect(path)
-    con.executescript(
-        """
-        CREATE TABLE joueur (pseudo TEXT, email TEXT, picture TEXT, note INTEGER);
-        CREATE TABLE tournoi (idTournoi INTEGER, nomTournoi TEXT, nbJoueurs INTEGER, dateDebut TEXT, dateFin TEXT, termine INTEGER, poulesTermine INTEGER);
-        CREATE TABLE matches (idMatch INTEGER, idTournoi INTEGER, idPoule INTEGER, date TEXT, numTour INTEGER,
-            idJoueur1 TEXT, idJoueur2 TEXT, scoreJ1 INTEGER, scoreJ2 INTEGER, nomGagnant TEXT, saisi INTEGER,
-            numTv INTEGER, gagnantMatch1 INTEGER, gagnantMatch2 INTEGER, numMatch INTEGER, tabJ1 INTEGER,
-            tabJ2 INTEGER, note TEXT, perdantMatch1 INTEGER, perdantMatch2 INTEGER);
-        CREATE TABLE champion (idTournoi INTEGER, nomJoueur TEXT);
-        CREATE TABLE configuration (idTournoi INTEGER, idTypeTournoi INTEGER);
-        INSERT INTO joueur VALUES ('Alice','','',70),('Bob','','',60);
-        INSERT INTO tournoi VALUES (1,'Old League',2,'2016-01-01 00:00:00','2016-01-02 00:00:00',1,1);
-        INSERT INTO configuration VALUES (1,1);
-        INSERT INTO matches VALUES (1,1,1,'2016-01-01 00:00:00',1,'Alice','Bob',3,0,'Alice',1,1,NULL,NULL,NULL,-1,-1,NULL,NULL,NULL);
-        INSERT INTO champion VALUES (1,'Alice');
-        """
-    )
-    con.commit()
-    con.close()
-
-
-def test_import_dedup_and_replace(tmp_path):
+def test_fulltime_backup_import_merge_dedup_and_replace():
     _reset()
-    src = tmp_path / "legacy.sqlite"
-    _make_legacy_db(src)
+    ids = _make_players(2)
+    tournament = client.post(
+        "/api/tournaments", json={"name": "Backup league", "format": "league", "player_ids": ids}
+    ).json()
+    match = client.get(f"/api/tournaments/{tournament['id']}/matches").json()[0]
+    client.post(
+        f"/api/tournaments/{tournament['id']}/matches/{match['id']}/result",
+        json={"home_score": 2, "away_score": 1},
+    )
+    client.post("/api/games", json={
+        "home_id": ids[0], "away_id": ids[1], "home_score": 1, "away_score": 0,
+        "played_at": "2026-11-10", "note": "Friendly backup",
+    })
 
-    with open(src, "rb") as f:
-        first = client.post(
-            "/api/import/legacy", files={"file": ("legacy.sqlite", f, "application/octet-stream")}
-        ).json()
-    assert first["tournaments"] == 1
+    db = SessionLocal()
+    try:
+        db.add(FootballTeam(
+            id=64, name="Liverpool FC", short_name="Liverpool", crest_url="https://example.test/liverpool.png",
+            competition_code="PL", competition_name="Premier League",
+        ))
+        participant = db.execute(
+            select(Participant).where(
+                Participant.tournament_id == tournament["id"], Participant.player_id == ids[0]
+            )
+        ).scalar_one()
+        participant.team_id = 64
+        db.commit()
+    finally:
+        db.close()
 
-    # Re-importing the same file skips the already-imported tournament.
-    with open(src, "rb") as f:
-        second = client.post(
-            "/api/import/legacy", files={"file": ("legacy.sqlite", f, "application/octet-stream")}
-        ).json()
-    assert second["tournaments"] == 0
-    assert second["duplicates"] == 1
+    backup = client.get("/api/export/backup")
+    assert backup.status_code == 200
+    assert backup.content.startswith(b"SQLite format 3\x00")
+
+    _reset()
+    db = SessionLocal()
+    try:
+        db.add(AppSetting(key="installation-setting", value="keep-current"))
+        db.commit()
+    finally:
+        db.close()
+    keep_id = client.post("/api/players", json={"name": "Keep me during merge"}).json()["id"]
+    first = client.post(
+        "/api/import/fulltime",
+        files={"file": ("fulltime-backup.db", backup.content, "application/octet-stream")},
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["tournaments"] == 1
+    assert first.json()["matches"] == 1
+    assert first.json()["games"] == 1
+    assert any(p["id"] == keep_id for p in client.get("/api/players").json())
+    imported = client.get("/api/tournaments").json()
+    assert len(imported) == 1 and imported[0]["name"] == "Backup league"
+    detail = client.get(f"/api/tournaments/{imported[0]['id']}").json()
+    assert next(p for p in detail["participants"] if p["player"]["name"] == "P1")["team"]["crest_url"] == "https://example.test/liverpool.png"
+
+    # Re-importing the same backup doesn't duplicate its tournament or friendly.
+    second = client.post(
+        "/api/import/fulltime",
+        files={"file": ("fulltime-backup.db", backup.content, "application/octet-stream")},
+    )
+    assert second.status_code == 200, second.text
+    assert second.json()["duplicates"] == 2
     assert len(client.get("/api/tournaments").json()) == 1
+    assert len(client.get("/api/games").json()) == 1
 
-    # Replace wipes everything and imports fresh.
-    with open(src, "rb") as f:
-        third = client.post(
-            "/api/import/legacy",
-            files={"file": ("legacy.sqlite", f, "application/octet-stream")},
-            data={"replace": "true"},
-        ).json()
-    assert third["replaced"] is True
-    assert third["tournaments"] == 1
-    assert len(client.get("/api/tournaments").json()) == 1
+    # Replace removes tournament data but restores the uploaded backup cleanly.
+    third = client.post(
+        "/api/import/fulltime",
+        files={"file": ("fulltime-backup.db", backup.content, "application/octet-stream")},
+        data={"replace": "true"},
+    )
+    assert third.status_code == 200, third.text
+    assert third.json()["replaced"] is True
+    assert {p["name"] for p in client.get("/api/players").json()} == {"P1", "P2"}
+    assert len(client.get("/api/games").json()) == 1
+    db = SessionLocal()
+    try:
+        assert db.get(AppSetting, "installation-setting").value == "keep-current"
+    finally:
+        db.close()
 
 
 def test_tournament_list_sorted_by_date():
@@ -476,38 +508,17 @@ def test_backup_export():
     assert "attachment" in r.headers.get("content-disposition", "")
 
 
-def test_import_synthetic(tmp_path):
+def test_fulltime_import_rejects_other_sqlite_schema(tmp_path):
     _reset()
-    src = tmp_path / "export.sqlite"
+    src = tmp_path / "not-fulltime.sqlite"
     con = sqlite3.connect(src)
-    con.executescript(
-        """
-        CREATE TABLE joueur (pseudo TEXT, email TEXT, picture TEXT, note INTEGER);
-        CREATE TABLE tournoi (idTournoi INTEGER, nomTournoi TEXT, nbJoueurs INTEGER, dateDebut TEXT, dateFin TEXT, termine INTEGER, poulesTermine INTEGER);
-        CREATE TABLE matches (idMatch INTEGER, idTournoi INTEGER, idPoule INTEGER, date TEXT, numTour INTEGER,
-            idJoueur1 TEXT, idJoueur2 TEXT, scoreJ1 INTEGER, scoreJ2 INTEGER, nomGagnant TEXT, saisi INTEGER,
-            numTv INTEGER, gagnantMatch1 INTEGER, gagnantMatch2 INTEGER, numMatch INTEGER, tabJ1 INTEGER,
-            tabJ2 INTEGER, note TEXT, perdantMatch1 INTEGER, perdantMatch2 INTEGER);
-        CREATE TABLE champion (idTournoi INTEGER, nomJoueur TEXT);
-        CREATE TABLE configuration (idTournoi INTEGER, idTypeTournoi INTEGER);
-        INSERT INTO joueur VALUES ('Alice','','',70),('Bob','','',60);
-        INSERT INTO tournoi VALUES (1,'Old League',2,'2016-01-01 00:00:00','2016-01-02 00:00:00',1,1);
-        INSERT INTO configuration VALUES (1,1);
-        INSERT INTO matches VALUES (1,1,1,'2016-01-01 00:00:00',1,'Alice','Bob',3,0,'Alice',1,1,NULL,NULL,NULL,-1,-1,NULL,NULL,NULL);
-        INSERT INTO champion VALUES (1,'Alice');
-        """
-    )
+    con.execute("CREATE TABLE unrelated_data (value TEXT)")
     con.commit()
     con.close()
 
     with open(src, "rb") as f:
-        resp = client.post("/api/import/legacy", files={"file": ("export.sqlite", f, "application/octet-stream")})
-    assert resp.status_code == 200, resp.text
-    stats = resp.json()
-    assert stats["tournaments"] == 1
-    assert stats["matches"] == 1
-    tours = client.get("/api/tournaments").json()
-    assert tours[0]["name"] == "Old League"
-    assert tours[0]["status"] == "completed"
-    assert tours[0]["start_date"] == "2016-01-01"
-    assert tours[0]["created_at"].startswith("2016-01-01")
+        resp = client.post(
+            "/api/import/fulltime", files={"file": ("not-fulltime.sqlite", f, "application/octet-stream")}
+        )
+    assert resp.status_code == 400
+    assert "FullTime Local backup" in resp.json()["detail"]

@@ -55,6 +55,8 @@ def update_tournament(tournament_id: int, payload: TournamentUpdate, db: Session
     if not t:
         raise HTTPException(404, "Tournament not found")
     data = payload.model_dump(exclude_unset=True)
+    if "elapsed_minutes_override" in data and t.status != "completed":
+        raise HTTPException(400, "Elapsed time can only be adjusted after the tournament is closed")
     if "settings" in data and data["settings"] is not None:
         data["settings"] = {**t.settings, **data["settings"]}
     for key, value in data.items():

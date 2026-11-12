@@ -28,12 +28,14 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **TV mode** — a big-screen view that cycles standings, fixtures, brackets and results.
 - **Optional club crests** — connect football-data.org in Settings and assign clubs to players per tournament;
   multiple players can share a club.
-- **Settings** — theme, optional football data integration, account management, full backup and legacy import.
-- **Time estimate** — planned duration from match length + changeover; the header shows elapsed/actual time, and new events pre-fill from past ones.
+- **Settings** — theme, optional football data integration, account management, full backup and FullTime backup
+  import.
+- **Time estimate** — planned duration from match length + changeover; new events pre-fill
+  from past ones. Admins can adjust a closed tournament's actual duration, which also feeds
+  timing calibration.
 - **Locked results** — a completed tournament is read-only; reopen it to fix a score, then close it again.
 - **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
   require login. Admins can do everything, viewers are read-only.
-- **Import** a legacy SQLite database.
 
 ---
 
@@ -63,7 +65,8 @@ _Screenshots use mock data._
 - During tournament setup, choose a supported competition and optionally assign a club to each selected player.
   Club IDs, names and crest URLs are cached locally and shown in fixtures, standings, brackets and TV mode; badge
   images load from their provider URLs. Disconnecting the provider keeps existing assignments intact.
-- **Settings → Backup & import** contains the full database backup and legacy SQLite import tools. **Settings → Accounts** is admin-only.
+- **Settings → Backup & import** contains the full database backup and FullTime backup import.
+  **Settings → Accounts** is admin-only.
 - Viewers can browse the app but see only **Appearance** in Settings.
 
 ---
@@ -135,14 +138,14 @@ The 0–100 figure shown is `round(50 + (elo − 1000) / 8)` (1000 → 50, 1200 
 
 ---
 
-## Importing existing data
+## Importing a FullTime Local backup
 
-Open **Settings → Backup & import** and upload an **unencrypted** SQLite `.sqlite` database (the source app's
-schema). Historical tournaments are imported as completed. Encrypted exports are not supported — decrypt them
-first if needed.
-
-Re-importing the same file is safe (tournaments already imported are skipped).
-Tick **Replace all existing data** to wipe everything first and start clean.
+Download a `.db` backup from **Settings → Backup & import**, then upload it in the same section to merge its
+players, tournaments, results, friendlies and club badges into the current installation. Players with matching names
+are reused, duplicate tournaments and friendlies are skipped, and user accounts and API settings stay local to this
+installation. Use **Replace tournament data** for a clean restore of those records; accounts and settings are
+preserved. To restore the complete database including accounts, stop the app and replace `./data/fulltime.db` with
+the backup file.
 
 ---
 

@@ -322,12 +322,15 @@ export default function TvMode() {
   const createdAt = parseTimestamp(t.created_at)
   const startedAt = parseTimestamp(t.started_at)
   const finishedAt = parseTimestamp(t.finished_at)
-  const clockStart = createdAt ?? startedAt
+  const clockStart = t.status === 'completed'
+    ? (startedAt ?? createdAt)
+    : (createdAt ?? startedAt)
   const clockEnd = t.status === 'completed' ? finishedAt : clock
-  const elapsedMinutes =
+  const timestampElapsedMinutes =
     clockStart && clockEnd
       ? Math.max(0, Math.round((clockEnd.getTime() - clockStart.getTime()) / 60000))
       : null
+  const elapsedMinutes = t.elapsed_minutes_override ?? timestampElapsedMinutes
   const elapsedLabel = elapsedMinutes === 0 ? '<1m' : formatDuration(elapsedMinutes ?? 0)
 
   return (

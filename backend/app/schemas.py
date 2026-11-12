@@ -55,6 +55,7 @@ class TournamentUpdate(BaseModel):
     start_date: date | None = None
     nb_pitches: int | None = Field(default=None, ge=1, le=64)
     settings: dict[str, Any] | None = None
+    elapsed_minutes_override: int | None = Field(default=None, ge=0, le=525600)
 
 
 class GroupOut(BaseModel):
@@ -94,6 +95,9 @@ class TournamentOut(BaseModel):
     settings: dict[str, Any]
     start_date: date | None
     end_date: date | None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    elapsed_minutes_override: int | None = None
     champion_id: int | None
     created_at: datetime
 

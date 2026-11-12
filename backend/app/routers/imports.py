@@ -5,15 +5,13 @@ import os
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from ..config import DATABASE_URL
 from ..database import engine, get_db
-from ..models import Game, Group, Match, Participant, Player, Tournament
+from ..fulltime_import import import_fulltime_backup
 from ..services.estimate import slot_calibration
 from ..services.fixtures import default_settings
-from ..legacy_import import import_legacy
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
@@ -35,33 +33,23 @@ def meta(db: Session = Depends(get_db)):
     }
 
 
-@router.post("/import/legacy")
-async def import_legacy_file(
+@router.post("/import/fulltime")
+async def import_fulltime_file(
     file: UploadFile = File(...),
     replace: bool = Form(False),
     db: Session = Depends(get_db),
 ):
-    data = await file.read()
+    data = await file.read(100 * 1024 * 1024 + 1)
+    if len(data) > 100 * 1024 * 1024:
+        raise HTTPException(413, "File is too large (max 100 MB)")
     if not data:
         raise HTTPException(400, "Empty file")
     try:
-        if replace:
-            _wipe(db)
-        stats = import_legacy(db, data)
+        stats = import_fulltime_backup(db, data, replace=replace)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(400, str(exc))
     return {"ok": True, "filename": file.filename, "replaced": replace, **stats}
-
-
-def _wipe(db: Session) -> None:
-    """Delete all local data (used by the 'replace' import option).
-
-    Left uncommitted so it rolls back if the import then fails.
-    """
-    for model in (Match, Game, Participant, Group, Tournament, Player):
-        db.execute(delete(model))
-    db.flush()
 
 
 @router.get("/export/backup")

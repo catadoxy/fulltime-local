@@ -178,7 +178,11 @@ def slot_calibration(db: Session) -> dict:
         estimate = estimate_tournament(t)
         if estimate["slots"] <= 0:
             continue
-        minutes = (t.finished_at - t.started_at).total_seconds() / 60
+        minutes = (
+            t.elapsed_minutes_override
+            if t.elapsed_minutes_override is not None
+            else (t.finished_at - t.started_at).total_seconds() / 60
+        )
         if minutes <= 0:
             continue
         per_slot = minutes / estimate["slots"]
@@ -192,4 +196,3 @@ def slot_calibration(db: Session) -> dict:
     n = len(samples)
     middle = samples[n // 2] if n % 2 else (samples[n // 2 - 1] + samples[n // 2]) / 2
     return {"samples": n, "median_slot_minutes": round(middle, 1)}
-

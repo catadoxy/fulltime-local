@@ -335,6 +335,7 @@ def reopen_tournament(db: Session, t: Tournament) -> Tournament:
     t.status = "active"
     t.end_date = None
     t.finished_at = None
+    t.elapsed_minutes_override = None
     t.champion_id = None
     t.settings = {**(t.settings or {}), "reopened": True}
     db.commit()

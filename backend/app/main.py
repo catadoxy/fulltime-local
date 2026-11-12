@@ -53,6 +53,9 @@ def _migrate() -> None:
             conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN started_at DATETIME")
         if tcols and "finished_at" not in tcols:
             conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN finished_at DATETIME")
+        tcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(tournaments)")}
+        if tcols and "elapsed_minutes_override" not in tcols:
+            conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN elapsed_minutes_override INTEGER")
         pcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(participants)")}
         if pcols and "team_id" not in pcols:
             conn.exec_driver_sql(

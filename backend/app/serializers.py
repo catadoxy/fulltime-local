@@ -73,6 +73,7 @@ def tournament_out(t: Tournament, detail: bool = False) -> dict:
         "end_date": t.end_date,
         "started_at": t.started_at,
         "finished_at": t.finished_at,
+        "elapsed_minutes_override": t.elapsed_minutes_override,
         "champion_id": t.champion_id,
         "created_at": t.created_at,
     }

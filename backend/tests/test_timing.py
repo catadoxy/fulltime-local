@@ -76,6 +76,50 @@ def test_close_tournament_stamps_finished_at():
     assert t["started_at"] is None  # closed before any match was played
 
 
+def test_closed_tournament_elapsed_duration_can_be_adjusted_and_reset():
+    _reset()
+    ids = _players(2)
+    tid = client.post(
+        "/api/tournaments", json={"name": "Correctable clock", "format": "league", "player_ids": ids}
+    ).json()["id"]
+
+    assert client.patch(f"/api/tournaments/{tid}", json={"elapsed_minutes_override": 90}).status_code == 400
+    closed = client.post(f"/api/tournaments/{tid}/close").json()
+    assert closed["started_at"] is None
+
+    adjusted = client.patch(f"/api/tournaments/{tid}", json={"elapsed_minutes_override": 185})
+    assert adjusted.status_code == 200, adjusted.text
+    assert adjusted.json()["elapsed_minutes_override"] == 185
+
+    reset = client.patch(f"/api/tournaments/{tid}", json={"elapsed_minutes_override": None})
+    assert reset.status_code == 200, reset.text
+    assert reset.json()["elapsed_minutes_override"] is None
+
+    assert client.patch(f"/api/tournaments/{tid}", json={"elapsed_minutes_override": 45}).status_code == 200
+    reopened = client.post(f"/api/tournaments/{tid}/reopen").json()
+    assert reopened["elapsed_minutes_override"] is None
+
+
+def test_calibration_uses_manual_elapsed_override():
+    _reset()
+    tids = [_finish_two_player_league("Adjusted A"), _finish_two_player_league("Adjusted B")]
+
+    db = SessionLocal()
+    try:
+        for tid in tids:
+            t = db.get(Tournament, tid)
+            t.started_at = datetime(2026, 1, 1, 18, 0, 0)
+            t.finished_at = datetime(2026, 1, 1, 18, 30, 0)
+        db.get(Tournament, tids[0]).elapsed_minutes_override = 15
+        db.commit()
+    finally:
+        db.close()
+
+    calibration = client.get("/api/meta").json()["calibration"]
+    assert calibration["samples"] == 2
+    assert calibration["median_slot_minutes"] == 22.5
+
+
 def test_meta_calibration_uses_actual_slot_times():
     _reset()
     tids = [_finish_two_player_league("A"), _finish_two_player_league("B")]

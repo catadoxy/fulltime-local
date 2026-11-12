@@ -39,16 +39,20 @@ export default function TournamentDetail() {
   const [noteDraft, setNoteDraft] = useState('')
   const [dateDraft, setDateDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [adjustingElapsed, setAdjustingElapsed] = useState(false)
+  const [elapsedHoursDraft, setElapsedHoursDraft] = useState('0')
+  const [elapsedMinutesDraft, setElapsedMinutesDraft] = useState('0')
+  const [savingElapsed, setSavingElapsed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
-    if (!t?.started_at || t.status === 'completed') return
+    if (!t || t.status === 'completed') return
     const timer = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(timer)
-  }, [t?.started_at, t?.status])
+  }, [t?.status])
 
   const load = async (signal?: AbortSignal) => {
     try {
@@ -140,6 +144,57 @@ export default function TournamentDetail() {
     }
   }
 
+  function beginElapsedAdjustment() {
+    const value = elapsedMinutes ?? 0
+    setElapsedHoursDraft(String(Math.floor(value / 60)))
+    setElapsedMinutesDraft(String(value % 60))
+    setError('')
+    setAdjustingElapsed(true)
+  }
+
+  async function saveElapsedAdjustment(e: React.FormEvent) {
+    e.preventDefault()
+    if (!t) return
+    const hours = Number(elapsedHoursDraft)
+    const minutes = Number(elapsedMinutesDraft)
+    if (
+      !elapsedHoursDraft.trim() || !elapsedMinutesDraft.trim() ||
+      !Number.isInteger(hours) || !Number.isInteger(minutes) ||
+      hours < 0 || hours > 8760 || minutes < 0 || minutes > 59
+    ) {
+      setError('Enter a duration using whole hours and 0–59 minutes (up to one year).')
+      return
+    }
+    setSavingElapsed(true)
+    setError('')
+    try {
+      const updated = await api.updateTournament(t.id, {
+        elapsed_minutes_override: hours * 60 + minutes,
+      })
+      setT(updated)
+      setAdjustingElapsed(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSavingElapsed(false)
+    }
+  }
+
+  async function resetElapsedAdjustment() {
+    if (!t) return
+    setSavingElapsed(true)
+    setError('')
+    try {
+      const updated = await api.updateTournament(t.id, { elapsed_minutes_override: null })
+      setT(updated)
+      setAdjustingElapsed(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSavingElapsed(false)
+    }
+  }
+
   async function closeTournament() {
     if (!t) return
     setBusy(true)
@@ -162,6 +217,7 @@ export default function TournamentDetail() {
     try {
       await api.reopenTournament(t.id)
       setEditing(false)
+      setAdjustingElapsed(false)
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -177,15 +233,17 @@ export default function TournamentDetail() {
   const createdAt = parseTimestamp(t.created_at)
   const startedAt = parseTimestamp(t.started_at)
   const finishedAt = parseTimestamp(t.finished_at)
-  // While running, the clock starts at creation. Completed events keep the
-  // actual play duration (first result -> finish) so timing stays meaningful.
-  // Start at creation and freeze at the server-stamped close time.
-  const clockStart = createdAt ?? startedAt
+  // Running events start at creation; closed events use play-start to close time,
+  // with a manual override available if those timestamps need correcting.
+  const clockStart = t.status === 'completed'
+    ? (startedAt ?? createdAt)
+    : (createdAt ?? startedAt)
   const clockEnd = t.status === 'completed' ? finishedAt : new Date(now)
-  const elapsedMinutes =
+  const timestampElapsedMinutes =
     clockStart && clockEnd
       ? Math.max(0, Math.round((clockEnd.getTime() - clockStart.getTime()) / 60000))
       : null
+  const elapsedMinutes = t.elapsed_minutes_override ?? timestampElapsedMinutes
   const elapsedLabel = elapsedMinutes === 0 ? '<1m' : formatDuration(elapsedMinutes ?? 0)
 
   return (
@@ -285,18 +343,23 @@ export default function TournamentDetail() {
                 {elapsedMinutes != null && (
                   <span
                     className="badge"
-                    title={
-                      t.status === 'completed'
+                    title={t.elapsed_minutes_override != null
+                      ? 'Manually adjusted actual duration'
+                      : t.status === 'completed'
                         ? startedAt
                           ? `Started ${startedAt.toLocaleString()}${finishedAt ? ` · finished ${finishedAt.toLocaleString()}` : ''}`
-                          : undefined
+                          : `Closed ${finishedAt?.toLocaleString() ?? ''}`
                         : createdAt
                           ? `Created ${createdAt.toLocaleString()}`
-                          : undefined
-                    }
+                          : undefined}
                   >
                     {t.status === 'completed' ? `Took ${elapsedLabel}` : `${elapsedLabel} elapsed`}
                   </span>
+                )}
+                {canEdit && t.status === 'completed' && (
+                  <button type="button" className="btn" onClick={beginElapsedAdjustment}>
+                    Adjust time
+                  </button>
                 )}
                 {t.status === 'completed' &&
                   elapsedMinutes != null &&
@@ -340,6 +403,52 @@ export default function TournamentDetail() {
           </Link>
         </div>
       </div>
+      {adjustingElapsed && (
+        <form className="panel" onSubmit={saveElapsedAdjustment}>
+          <h3 style={{ marginTop: 0 }}>Adjust actual duration</h3>
+          <p className="muted small">
+            Set the time from the first result to closing. If no match was played, it uses creation-to-close.
+            This also updates the duration used for future timing estimates.
+          </p>
+          <div className="row">
+            <div>
+              <label htmlFor="elapsed-hours">Hours</label>
+              <input
+                id="elapsed-hours"
+                type="number"
+                min={0}
+                max={8760}
+                step={1}
+                value={elapsedHoursDraft}
+                onChange={(e) => setElapsedHoursDraft(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="elapsed-minutes">Minutes</label>
+              <input
+                id="elapsed-minutes"
+                type="number"
+                min={0}
+                max={59}
+                step={1}
+                value={elapsedMinutesDraft}
+                onChange={(e) => setElapsedMinutesDraft(e.target.value)}
+              />
+            </div>
+            <button className="primary" type="submit" disabled={savingElapsed} style={{ alignSelf: 'flex-end' }}>
+              {savingElapsed ? 'Saving…' : 'Save duration'}
+            </button>
+            {t.elapsed_minutes_override != null && (
+              <button type="button" onClick={() => void resetElapsedAdjustment()} disabled={savingElapsed} style={{ alignSelf: 'flex-end' }}>
+                Use recorded time
+              </button>
+            )}
+            <button type="button" onClick={() => setAdjustingElapsed(false)} disabled={savingElapsed} style={{ alignSelf: 'flex-end' }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
       <ErrorBanner message={error} onRetry={() => load()} />
       {confirmDelete && (
         <ConfirmDialog

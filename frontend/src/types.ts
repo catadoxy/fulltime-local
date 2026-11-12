@@ -83,6 +83,7 @@ export interface Tournament {
   end_date: string | null
   started_at?: string | null
   finished_at?: string | null
+  elapsed_minutes_override?: number | null
   champion_id: number | null
   created_at: string
 }
