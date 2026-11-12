@@ -122,8 +122,6 @@ export default function Tournaments() {
   async function loadCompetitionTeams(code: string) {
     teamRequest.current?.abort()
     setCompetitionCode(code)
-    setTeamAssignments({})
-    setFootballTeams([])
     if (!code) {
       setLoadingTeams(false)
       return
@@ -134,7 +132,13 @@ export default function Tournaments() {
     setError('')
     try {
       const data = await api.footballTeams(code, ctrl.signal)
-      if (!ctrl.signal.aborted) setFootballTeams(data)
+      if (!ctrl.signal.aborted) {
+        setFootballTeams((current) => {
+          const merged = new Map(current.map((team) => [team.id, team]))
+          data.forEach((team) => merged.set(team.id, team))
+          return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name))
+        })
+      }
     } catch (err) {
       if (!ctrl.signal.aborted) setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -389,7 +393,9 @@ export default function Tournaments() {
               <div className="row between">
                 <div>
                   <h3 style={{ margin: '1rem 0 0.2rem' }}>Club teams <span className="muted small">(optional)</span></h3>
-                  <p className="muted small" style={{ margin: 0 }}>Assign one club to each player. Multiple players can share a club.</p>
+                  <p className="muted small" style={{ margin: 0 }}>
+                    Assign one club to each player. Switch competitions to add clubs from different leagues; loaded clubs stay available.
+                  </p>
                 </div>
                 <button type="button" className="btn" onClick={() => void toggleTeamOptions()}>
                   {showTeamOptions ? 'Hide team options' : 'Choose teams'}

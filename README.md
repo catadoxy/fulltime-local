@@ -62,9 +62,10 @@ _Screenshots use mock data._
 - Admins can connect a football-data.org token under **Settings → Football data**. The token is encrypted in the
   local database and is never sent to the browser. Team lookup is hidden until a token is configured; competition
   and team data are requested only when the optional team picker is used.
-- During tournament setup, choose a supported competition and optionally assign a club to each selected player.
-  Club IDs, names and crest URLs are cached locally and shown in fixtures, standings, brackets and TV mode; badge
-  images load from their provider URLs. Disconnecting the provider keeps existing assignments intact.
+- During tournament setup, load one or more supported competitions and optionally assign a club to each selected
+  player (for example, Real Madrid and PSG in the same tournament). Loaded clubs stay available when switching
+  competitions. Club IDs, names and crest URLs are cached locally and shown in fixtures, standings, brackets and TV
+  mode; badge images load from their provider URLs. Disconnecting the provider keeps existing assignments intact.
 - **Settings → Backup & import** contains the full database backup and FullTime backup import.
   **Settings → Accounts** is admin-only.
 - Viewers can browse the app but see only **Appearance** in Settings.
