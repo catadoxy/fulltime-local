@@ -365,6 +365,7 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .friendly-table th.away,
 .friendly-table td.away { text-align: left; }
 .friendly-table td.score { font-weight: 650; font-variant-numeric: tabular-nums; }
+.friendly-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
 
 /* ---- Badges ---- */
 .badge {

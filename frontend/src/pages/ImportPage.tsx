@@ -13,7 +13,7 @@ interface ImportResult {
   replaced?: boolean
 }
 
-export default function ImportPage() {
+export default function ImportPage({ embedded = false }: { embedded?: boolean }) {
   const { canEdit } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [replace, setReplace] = useState(false)
@@ -53,8 +53,12 @@ export default function ImportPage() {
   }
 
   return (
-    <div>
-      <h1>Backup &amp; import</h1>
+    <div id={embedded ? 'backup-import' : undefined}>
+      {embedded ? (
+        <h2 style={{ marginTop: 0 }}>Backup &amp; import</h2>
+      ) : (
+        <h1>Backup &amp; import</h1>
+      )}
 
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Export</h2>

@@ -1,7 +1,8 @@
 # FullTime Local
 
 A small self-hosted app for running tournaments with friends — brackets, tables,
-scores, stats and ratings. Everything stays on your machine.
+scores, stats and ratings. Your app data stays local. Optional club lookups fetch
+team details and crests from football-data.org.
 
 Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 
@@ -19,13 +20,15 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Friendlies** — record casual one-off matches alongside tournaments.
 - **Player profiles** — nickname + real name, plus separate tournament and
   friendly tabs.
-- **Compare** any two players (head-to-head and side-by-side).
+- **Compare** any two players (head-to-head and side-by-side), or jump straight from a friendly to its players'
+  comparison.
 - **Form charts** — Elo, rating and cumulative goals over time on each player profile.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
-- **Notes & themes** — tag a tournament with the game you played; 4 colour themes.
+- **Notes & themes** — tag a tournament with the game you played; choose from 4 themes in Settings.
 - **TV mode** — a big-screen view that cycles standings, fixtures, brackets and results.
-- **Optional club crests** — connect football-data.org in Settings and assign clubs to players per tournament.
-- **Appearance and integration settings** — choose a local theme and configure optional football data.
+- **Optional club crests** — connect football-data.org in Settings and assign clubs to players per tournament;
+  multiple players can share a club.
+- **Settings** — theme, optional football data integration, account management, full backup and legacy import.
 - **Time estimate** — planned duration from match length + changeover; the header shows elapsed/actual time, and new events pre-fill from past ones.
 - **Locked results** — a completed tournament is read-only; reopen it to fix a score, then close it again.
 - **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
@@ -42,12 +45,26 @@ _Screenshots use mock data._
 |---|---|
 | ![Tournaments](docs/screenshots/tournaments.png) | ![Tournament](docs/screenshots/tournament.png) |
 | Tournaments list | A league: standings + fixtures |
-| ![Player profile](docs/screenshots/player-tournaments.png) | ![Compare](docs/screenshots/compare.png) |
+| ![Player profile](docs/screenshots/player-tournaments.png) | ![Compare players](docs/screenshots/compare.png) |
 | Player profile (tournaments / friendlies tabs) | Compare two players |
-| ![Friendlies](docs/screenshots/friendlies.png) | ![Player friendlies](docs/screenshots/player-friendlies.png) |
-| Recording friendlies | A player's friendly record |
-| ![TV mode](docs/screenshots/tv.png) | |
-| TV mode for the venue screen | |
+| ![Friendlies with compare actions](docs/screenshots/friendlies-compare.png) | ![Comparison opened from a friendly](docs/screenshots/friendly-comparison.png) |
+| Friendly rows have a direct Compare action | The two players are preselected in the comparison |
+| ![Optional club assignment](docs/screenshots/team-assignment.png) | ![Settings](docs/screenshots/settings.png) |
+| Assign optional club crests while creating a tournament | Theme, football data, backup/import and accounts |
+| ![Viewer settings](docs/screenshots/viewer-settings.png) | ![TV mode](docs/screenshots/tv.png) |
+| Viewers see only the theme setting | TV mode for the venue screen |
+
+### Settings and club badges
+
+- The theme is a per-browser preference and is available to every account, including viewers.
+- Admins can connect a football-data.org token under **Settings → Football data**. The token is encrypted in the
+  local database and is never sent to the browser. Team lookup is hidden until a token is configured; competition
+  and team data are requested only when the optional team picker is used.
+- During tournament setup, choose a supported competition and optionally assign a club to each selected player.
+  Club IDs, names and crest URLs are cached locally and shown in fixtures, standings, brackets and TV mode; badge
+  images load from their provider URLs. Disconnecting the provider keeps existing assignments intact.
+- **Settings → Backup & import** contains the full database backup and legacy SQLite import tools. **Settings → Accounts** is admin-only.
+- Viewers can browse the app but see only **Appearance** in Settings.
 
 ---
 
@@ -120,9 +137,9 @@ The 0–100 figure shown is `round(50 + (elo − 1000) / 8)` (1000 → 50, 1200 
 
 ## Importing existing data
 
-Open **Data** and upload an **unencrypted** SQLite `.sqlite` database (the source
-app's schema). Historical tournaments are imported as completed. Encrypted
-exports are not supported — decrypt them first if needed.
+Open **Settings → Backup & import** and upload an **unencrypted** SQLite `.sqlite` database (the source app's
+schema). Historical tournaments are imported as completed. Encrypted exports are not supported — decrypt them
+first if needed.
 
 Re-importing the same file is safe (tournaments already imported are skipped).
 Tick **Replace all existing data** to wipe everything first and start clean.
@@ -149,9 +166,9 @@ Open the app with no users and no `FTL_PASSWORD` and everything is editable
 - set `FTL_PASSWORD` (legacy: log in as `admin` with that password), or
 - open the app and create the first admin account in the setup screen.
 
-Admins manage named accounts under **Settings → Accounts**: `viewer` accounts are read-only
-(they can browse but every `POST`/`PATCH`/`DELETE` returns `403`), `admin`
-accounts can do everything. The last admin cannot be deleted or demoted.
+Admins manage named accounts under **Settings → Accounts**: `viewer` accounts are read-only (they can browse but
+every `POST`/`PATCH`/`DELETE` returns `403`) and see only the theme in Settings; `admin` accounts can do everything.
+The last admin cannot be deleted or demoted.
 
 ---
 

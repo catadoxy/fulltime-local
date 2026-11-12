@@ -185,7 +185,7 @@ export default function Friendlies() {
               </th>
               <th className="away">Away</th>
               <th>Note</th>
-              {canEdit && <th style={{ width: 90 }}></th>}
+              <th style={{ width: 170 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -201,13 +201,16 @@ export default function Friendlies() {
                   </td>
                   <td className={`away ${awayWin ? 'won' : ''}`}>{g.away_name}</td>
                   <td className="muted small">{g.note || '—'}</td>
-                  {canEdit && (
-                    <td>
+                  <td className="friendly-actions">
+                    <Link className="btn" to={`/compare?a=${g.home_id}&b=${g.away_id}`}>
+                      Compare
+                    </Link>
+                    {canEdit && (
                       <button className="danger" onClick={() => setPendingDelete(g)}>
                         Delete
                       </button>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               )
             })}

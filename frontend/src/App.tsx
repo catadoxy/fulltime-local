@@ -8,7 +8,6 @@ import Players from './pages/Players'
 import PlayerDetail from './pages/PlayerDetail'
 import Friendlies from './pages/Friendlies'
 import Compare from './pages/Compare'
-import ImportPage from './pages/ImportPage'
 import Settings from './pages/Settings'
 
 export const THEMES = [
@@ -121,7 +120,6 @@ export default function App() {
             <NavLink to="/players">Players</NavLink>
             <NavLink to="/friendlies">Friendlies</NavLink>
             <NavLink to="/compare">Compare</NavLink>
-            <NavLink to="/import">Data</NavLink>
             <NavLink to="/settings">Settings</NavLink>
           </nav>
           {auth.user && (
@@ -155,7 +153,7 @@ export default function App() {
             <Route path="/players/:id" element={<PlayerDetail />} />
             <Route path="/friendlies" element={<Friendlies />} />
             <Route path="/compare" element={<Compare />} />
-            <Route path="/import" element={<ImportPage />} />
+            <Route path="/import" element={<Navigate to="/settings#backup-import" replace />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/users" element={<Navigate to="/settings#accounts" replace />} />
           </Routes>
