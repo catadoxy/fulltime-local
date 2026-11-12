@@ -58,6 +58,10 @@ class TournamentUpdate(BaseModel):
     elapsed_minutes_override: int | None = Field(default=None, ge=0, le=525600)
 
 
+class TournamentClose(BaseModel):
+    elapsed_minutes_override: int | None = Field(default=None, ge=0, le=525600)
+
+
 class GroupOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

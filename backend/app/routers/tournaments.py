@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Match, Tournament
-from ..schemas import ResultIn, TournamentCreate, TournamentUpdate
+from ..schemas import ResultIn, TournamentClose, TournamentCreate, TournamentUpdate
 from ..serializers import match_out, tournament_out
 from ..services import fixtures, results, standings
 
@@ -76,11 +76,19 @@ def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{tournament_id}/close")
-def close_tournament(tournament_id: int, db: Session = Depends(get_db)):
+def close_tournament(
+    tournament_id: int,
+    payload: TournamentClose | None = None,
+    db: Session = Depends(get_db),
+):
     t = db.get(Tournament, tournament_id)
     if not t:
         raise HTTPException(404, "Tournament not found")
-    results.close_tournament(db, t)
+    results.close_tournament(
+        db,
+        t,
+        elapsed_minutes_override=payload.elapsed_minutes_override if payload else None,
+    )
     db.refresh(t)
     return tournament_out(t, detail=True)
 

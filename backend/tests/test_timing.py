@@ -76,6 +76,23 @@ def test_close_tournament_stamps_finished_at():
     assert t["started_at"] is None  # closed before any match was played
 
 
+def test_close_can_save_adjusted_duration_in_one_request():
+    _reset()
+    ids = _players(2)
+    tid = client.post(
+        "/api/tournaments", json={"name": "Adjusted while closing", "format": "league", "player_ids": ids}
+    ).json()["id"]
+
+    response = client.post(
+        f"/api/tournaments/{tid}/close", json={"elapsed_minutes_override": 205}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "completed"
+    assert response.json()["elapsed_minutes_override"] == 205
+    repeated_close = client.post(f"/api/tournaments/{tid}/close")
+    assert repeated_close.json()["elapsed_minutes_override"] == 205
+
+
 def test_closed_tournament_elapsed_duration_can_be_adjusted_and_reset():
     _reset()
     ids = _players(2)

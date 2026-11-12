@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
@@ -129,6 +130,7 @@ export function SearchInput({
 export function ConfirmDialog({
   title,
   message,
+  children,
   confirmLabel = 'Delete',
   onConfirm,
   onCancel,
@@ -136,6 +138,7 @@ export function ConfirmDialog({
 }: {
   title: string
   message: string
+  children?: ReactNode
   confirmLabel?: string
   onConfirm: () => void
   onCancel: () => void
@@ -162,6 +165,7 @@ export function ConfirmDialog({
       >
         <h3 style={{ marginTop: 0 }}>{title}</h3>
         <p className="muted">{message}</p>
+        {children}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button type="button" onClick={onCancel} disabled={busy}>
             Cancel

@@ -45,6 +45,10 @@ export default function TournamentDetail() {
   const [savingElapsed, setSavingElapsed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [closeHoursDraft, setCloseHoursDraft] = useState('0')
+  const [closeMinutesDraft, setCloseMinutesDraft] = useState('0')
+  const [closeDurationEdited, setCloseDurationEdited] = useState(false)
+  const [closeDurationError, setCloseDurationError] = useState('')
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
@@ -125,6 +129,18 @@ export default function TournamentDetail() {
 
   const allPlayed = matches.length > 0 && matches.every((m) => m.played)
 
+  function beginClose() {
+    if (!t) return
+    const start = parseTimestamp(t.started_at) ?? parseTimestamp(t.created_at)
+    const elapsed = start ? Math.max(0, Math.round((Date.now() - start.getTime()) / 60000)) : 0
+    setCloseHoursDraft(String(Math.floor(elapsed / 60)))
+    setCloseMinutesDraft(String(elapsed % 60))
+    setCloseDurationEdited(false)
+    setCloseDurationError('')
+    setError('')
+    setConfirmClose(true)
+  }
+
   async function saveDetails() {
     if (!t) return
     setSaving(true)
@@ -197,11 +213,27 @@ export default function TournamentDetail() {
 
   async function closeTournament() {
     if (!t) return
+    let elapsedOverride: number | undefined
+    if (closeDurationEdited) {
+      const hours = Number(closeHoursDraft)
+      const minutes = Number(closeMinutesDraft)
+      if (
+        !closeHoursDraft.trim() || !closeMinutesDraft.trim() ||
+        !Number.isInteger(hours) || !Number.isInteger(minutes) ||
+        hours < 0 || hours > 8760 || minutes < 0 || minutes > 59
+      ) {
+        setCloseDurationError('Enter whole hours and 0–59 minutes (up to one year).')
+        return
+      }
+      elapsedOverride = hours * 60 + minutes
+    }
     setBusy(true)
     try {
-      const closed = await api.closeTournament(t.id)
+      const closed = await api.closeTournament(t.id, elapsedOverride)
       setT(closed)
       setConfirmClose(false)
+      setCloseDurationEdited(false)
+      setCloseDurationError('')
       void load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -357,8 +389,14 @@ export default function TournamentDetail() {
                   </span>
                 )}
                 {canEdit && t.status === 'completed' && (
-                  <button type="button" className="btn" onClick={beginElapsedAdjustment}>
-                    Adjust time
+                  <button
+                    type="button"
+                    className="elapsed-edit"
+                    onClick={beginElapsedAdjustment}
+                    aria-label="Adjust actual duration"
+                    title="Adjust actual duration"
+                  >
+                    ✎
                   </button>
                 )}
                 {t.status === 'completed' &&
@@ -379,7 +417,7 @@ export default function TournamentDetail() {
             <button
               className="primary"
               title="Mark this tournament as completed"
-              onClick={() => setConfirmClose(true)}
+              onClick={beginClose}
             >
               Close tournament
             </button>
@@ -471,7 +509,48 @@ export default function TournamentDetail() {
           onConfirm={() => void closeTournament()}
           onCancel={() => setConfirmClose(false)}
           busy={busy}
-        />
+        >
+          <div className="panel" style={{ margin: '0.75rem 0' }}>
+            <div className="muted small" style={{ marginBottom: '0.5rem' }}>
+              Actual duration (hours and minutes). Leave unchanged to use the recorded timestamps, or adjust it before closing.
+            </div>
+            <div className="row">
+              <div>
+                <label htmlFor="close-elapsed-hours">Hours</label>
+                <input
+                  id="close-elapsed-hours"
+                  type="number"
+                  min={0}
+                  max={8760}
+                  step={1}
+                  value={closeHoursDraft}
+                  onChange={(e) => {
+                    setCloseHoursDraft(e.target.value)
+                    setCloseDurationEdited(true)
+                    setCloseDurationError('')
+                  }}
+                />
+              </div>
+              <div>
+                <label htmlFor="close-elapsed-minutes">Minutes</label>
+                <input
+                  id="close-elapsed-minutes"
+                  type="number"
+                  min={0}
+                  max={59}
+                  step={1}
+                  value={closeMinutesDraft}
+                  onChange={(e) => {
+                    setCloseMinutesDraft(e.target.value)
+                    setCloseDurationEdited(true)
+                    setCloseDurationError('')
+                  }}
+                />
+              </div>
+            </div>
+            {closeDurationError && <div className="error" role="alert">{closeDurationError}</div>}
+          </div>
+        </ConfirmDialog>
       )}
 
       {hasTables && (

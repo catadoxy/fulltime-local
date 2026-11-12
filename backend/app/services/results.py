@@ -296,7 +296,12 @@ def reconcile_champions(db: Session) -> int:
     return changed
 
 
-def close_tournament(db: Session, t: Tournament) -> Tournament:
+def close_tournament(
+    db: Session,
+    t: Tournament,
+    *,
+    elapsed_minutes_override: int | None = None,
+) -> Tournament:
     """Manually close a tournament: pick a champion if we can, then complete it."""
     if t.format in ("league", "swiss"):
         from .standings import standings
@@ -315,6 +320,8 @@ def close_tournament(db: Session, t: Tournament) -> Tournament:
             t.champion_id = final.winner_id
 
     t.status = "completed"
+    if elapsed_minutes_override is not None:
+        t.elapsed_minutes_override = elapsed_minutes_override
     if t.end_date is None:
         t.end_date = date.today()
     if t.finished_at is None:

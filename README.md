@@ -31,8 +31,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Settings** — theme, optional football data integration, account management, full backup and FullTime backup
   import.
 - **Time estimate** — planned duration from match length + changeover; new events pre-fill
-  from past ones. Admins can adjust a closed tournament's actual duration, which also feeds
-  timing calibration.
+  from past ones. Admins can adjust actual duration while closing or afterward; corrections
+  also feed timing calibration.
 - **Locked results** — a completed tournament is read-only; reopen it to fix a score, then close it again.
 - **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
   require login. Admins can do everything, viewers are read-only.

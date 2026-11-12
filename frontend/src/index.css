@@ -454,6 +454,16 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
   border-color: color-mix(in srgb, var(--red) 55%, var(--line));
   background: color-mix(in srgb, var(--red) 12%, transparent);
 }
+.elapsed-edit {
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.elapsed-edit:hover { color: var(--chalk); border-color: var(--line-strong); }
 
 /* ---- Head to head / compare ---- */
 .h2h { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.5rem; }

@@ -140,8 +140,13 @@ export const api = {
     }),
   deleteTournament: (id: number) =>
     http<void>(`/api/tournaments/${id}`, { method: 'DELETE' }),
-  closeTournament: (id: number) =>
-    http<TournamentDetail>(`/api/tournaments/${id}/close`, { method: 'POST' }),
+  closeTournament: (id: number, elapsedMinutesOverride?: number) =>
+    http<TournamentDetail>(`/api/tournaments/${id}/close`, {
+      method: 'POST',
+      ...(elapsedMinutesOverride == null
+        ? {}
+        : { body: JSON.stringify({ elapsed_minutes_override: elapsedMinutesOverride }) }),
+    }),
   reopenTournament: (id: number) =>
     http<TournamentDetail>(`/api/tournaments/${id}/reopen`, { method: 'POST' }),
 
