@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
 import FootballTeamAssignments from '../components/FootballTeamAssignments'
+import { csvFilename, downloadCsv } from '../csv'
 import { ConfirmDialog, ErrorBanner, LoadingSkeleton, TableWrap, formatDuration, parseTimestamp } from '../components/ui'
 import { TeamLabel } from '../components/TeamLabel'
 import { FORMAT_LABELS } from '../labels'
@@ -272,6 +273,53 @@ export default function TournamentDetail() {
       return
     }
     void saveRoster(false)
+  }
+
+  function exportTournamentMatches() {
+    if (!t) return
+    downloadCsv(
+      `${csvFilename(t.name)}-matches.csv`,
+      ['Round', 'Stage', 'Group', 'Pitch', 'Home player', 'Home club', 'Home score', 'Home pens', 'Away player', 'Away club', 'Away score', 'Away pens', 'Played', 'Winner', 'Note'],
+      matches.map((match) => [
+        match.round_number,
+        STAGE_LABELS[match.stage] ?? match.stage,
+        groupNames.get(match.group_id ?? -1) ?? '',
+        match.pitch,
+        match.home_name,
+        playerTeams.get(match.home_id ?? -1)?.name ?? '',
+        match.home_score,
+        match.home_pen,
+        match.away_name,
+        playerTeams.get(match.away_id ?? -1)?.name ?? '',
+        match.away_score,
+        match.away_pen,
+        match.played,
+        match.winner_id != null ? playerNames.get(match.winner_id) ?? '' : '',
+        match.note,
+      ]),
+    )
+  }
+
+  function exportTournamentStandings() {
+    if (!t) return
+    downloadCsv(
+      `${csvFilename(t.name)}-standings.csv`,
+      ['Group', 'Position', 'Player', 'Club', 'Played', 'Won', 'Drawn', 'Lost', 'Goals for', 'Goals against', 'Goal difference', 'Points'],
+      tables.flatMap((table) => table.rows.map((row, index) => [
+        table.group_name ?? 'Overall',
+        index + 1,
+        row.player_name,
+        playerTeams.get(row.player_id)?.name ?? '',
+        row.played,
+        row.won,
+        row.drawn,
+        row.lost,
+        row.goals_for,
+        row.goals_against,
+        row.goal_diff,
+        row.points,
+      ])),
+    )
   }
 
   function beginElapsedAdjustment() {
@@ -776,7 +824,12 @@ export default function TournamentDetail() {
 
       {hasTables && (
         <div className="panel">
-          <h3 style={{ marginTop: 0 }}>Standings</h3>
+          <div className="row between">
+            <h3 style={{ marginTop: 0 }}>Standings</h3>
+            <button type="button" className="btn" onClick={exportTournamentStandings}>
+              Export standings CSV
+            </button>
+          </div>
           {tables.map((table, i) => (
             <div key={i} style={{ marginBottom: i < tables.length - 1 ? '1rem' : 0 }}>
               {table.group_name && <div className="row-header">{table.group_name}</div>}
@@ -794,6 +847,7 @@ export default function TournamentDetail() {
         onChange={() => load()}
         canEdit={canEdit && t.status === 'active'}
         playerTeams={playerTeams}
+        onExport={exportTournamentMatches}
       />
 
       {hasBracket && (
@@ -868,6 +922,7 @@ function Fixtures({
   onChange,
   canEdit,
   playerTeams,
+  onExport,
 }: {
   matches: Match[]
   groupNames: Map<number, string>
@@ -876,6 +931,7 @@ function Fixtures({
   onChange: () => void
   canEdit: boolean
   playerTeams: Map<number, (TDetail['participants'][number]['team'])>
+  onExport: () => void
 }) {
   // Group into sections: stage (+ group), then by round within the section.
   const sections = useMemo(() => {
@@ -904,7 +960,12 @@ function Fixtures({
 
   return (
     <div className="panel">
-      <h3 style={{ marginTop: 0 }}>Fixtures &amp; results</h3>
+      <div className="row between">
+        <h3 style={{ marginTop: 0 }}>Fixtures &amp; results</h3>
+        <button type="button" className="btn" onClick={onExport} disabled={!matches.length}>
+          Export matches CSV
+        </button>
+      </div>
       {sections.map((section) => {
         const knockoutSection = isKnockout(section.matches[0]?.stage ?? '')
         const rounds = [...new Set(section.matches.map((m) => m.round_number))]

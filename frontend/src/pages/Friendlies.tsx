@@ -5,6 +5,7 @@ import { useAuth } from '../App'
 import FootballTeamAssignments from '../components/FootballTeamAssignments'
 import { TeamLabel } from '../components/TeamLabel'
 import { ConfirmDialog, EmptyState, ErrorBanner } from '../components/ui'
+import { downloadCsv } from '../csv'
 import type { FootballTeam, Game, Player } from '../types'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -112,6 +113,23 @@ export default function Friendlies() {
     setClubFilter('')
     setResultFilter('all')
     setPage(1)
+  }
+
+  function exportFriendlies() {
+    downloadCsv(
+      'friendlies.csv',
+      ['Date', 'Home player', 'Home club', 'Home score', 'Away score', 'Away player', 'Away club', 'Game / note'],
+      filteredGames.map((game) => [
+        game.played_at,
+        game.home_name,
+        game.home_team?.name,
+        game.home_score,
+        game.away_score,
+        game.away_name,
+        game.away_team?.name,
+        game.note,
+      ]),
+    )
   }
 
   function updatePlayer(side: 'home' | 'away', playerId: string) {
@@ -365,6 +383,12 @@ export default function Friendlies() {
             </button>
           </div>
         </details>
+        <div className="row between" style={{ marginBottom: '0.5rem' }}>
+          <span className="muted small">{filteredGames.length} match{filteredGames.length === 1 ? '' : 'es'}</span>
+          <button type="button" className="btn" onClick={exportFriendlies} disabled={!filteredGames.length}>
+            Export CSV
+          </button>
+        </div>
         <table className="friendly-table">
           <thead>
             <tr>

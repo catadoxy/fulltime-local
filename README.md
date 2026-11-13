@@ -23,6 +23,7 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
   friendly tabs with searchable, filterable and paginated histories.
 - **Compare** any two players (head-to-head and side-by-side), or jump straight from a friendly to its players'
   comparison.
+- **CSV exports** — download player profiles, filtered friendlies, tournament fixtures/results and standings.
 - **Form charts** — Elo, rating and cumulative goals over time on each player profile.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; choose from 4 themes in Settings.

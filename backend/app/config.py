@@ -18,4 +18,4 @@ FRONTEND_DIR = Path(
 )
 
 APP_NAME = "FullTime Local"
-APP_VERSION = "0.9.13"
+APP_VERSION = "0.9.14"

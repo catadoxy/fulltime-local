@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
 import { ConfirmDialog, EmptyState, ErrorBanner, SortableTh, TableWrap } from '../components/ui'
+import { downloadCsv } from '../csv'
 import type { Player } from '../types'
 
 export default function Players() {
@@ -109,6 +110,21 @@ export default function Players() {
     })
   }, [players, sort])
 
+  function exportPlayers() {
+    downloadCsv(
+      'players.csv',
+      ['Player', 'Real name', 'Rating', 'Elo', 'Tournaments', 'Titles'],
+      sorted.map((player) => [
+        player.name,
+        player.real_name,
+        player.rating,
+        player.elo ?? 1000,
+        player.tournaments ?? 0,
+        player.titles ?? 0,
+      ]),
+    )
+  }
+
   return (
     <div>
       <h1>Players</h1>
@@ -157,6 +173,9 @@ export default function Players() {
             {debouncedQuery ? `${sorted.length} match${sorted.length === 1 ? '' : 'es'}` : `${sorted.length} players`}
             {loading ? ' · searching…' : ''}
           </span>
+          <button type="button" className="btn" onClick={exportPlayers} disabled={!sorted.length}>
+            Export CSV
+          </button>
         </div>
         <TableWrap>
           <table className="players-table">
