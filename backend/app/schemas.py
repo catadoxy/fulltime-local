@@ -61,7 +61,7 @@ class TournamentUpdate(BaseModel):
 class TournamentParticipantsUpdate(BaseModel):
     player_ids: list[int] = Field(min_length=2)
     participant_teams: dict[int, int] = Field(default_factory=dict)
-    replace_results: bool = False
+    confirm_rebuild: bool = False
 
 
 class TournamentClose(BaseModel):

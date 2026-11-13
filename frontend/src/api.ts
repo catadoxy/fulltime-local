@@ -153,7 +153,7 @@ export const api = {
     }),
   updateTournamentParticipants: (
     id: number,
-    data: { player_ids: number[]; participant_teams: Record<string, number>; replace_results: boolean },
+    data: { player_ids: number[]; participant_teams: Record<string, number>; confirm_rebuild: boolean },
   ) =>
     http<TournamentDetail>(`/api/tournaments/${id}/participants`, {
       method: 'PUT',

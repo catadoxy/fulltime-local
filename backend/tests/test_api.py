@@ -591,7 +591,11 @@ def test_roster_edits_rebuild_fixtures_safely():
     assert len(add_player.json()["participants"]) == 4
     assert len(client.get(f"/api/tournaments/{tid}/matches").json()) == 6
 
-    match = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+    matches_before_edit = client.get(f"/api/tournaments/{tid}/matches").json()
+    match = next(
+        item for item in matches_before_edit
+        if {item["home_id"], item["away_id"]} == {ids[0], ids[1]}
+    )
     client.post(
         f"/api/tournaments/{tid}/matches/{match['id']}/result",
         json={"home_score": 2, "away_score": 1},
@@ -601,17 +605,24 @@ def test_roster_edits_rebuild_fixtures_safely():
         json={"player_ids": ids[:3], "participant_teams": {}},
     )
     assert blocked.status_code == 400
-    assert "erase entered results" in blocked.json()["detail"]
+    assert "confirmation" in blocked.json()["detail"]
 
     rebuilt = client.put(
         f"/api/tournaments/{tid}/participants",
-        json={"player_ids": ids[:3], "participant_teams": {}, "replace_results": True},
+        json={"player_ids": ids[:3], "participant_teams": {}, "confirm_rebuild": True},
     )
     assert rebuilt.status_code == 200, rebuilt.text
     assert len(rebuilt.json()["participants"]) == 3
     rebuilt_matches = client.get(f"/api/tournaments/{tid}/matches").json()
     assert len(rebuilt_matches) == 3
-    assert all(not item["played"] and item["home_score"] is None for item in rebuilt_matches)
+    preserved = next(
+        item for item in rebuilt_matches
+        if {item["home_id"], item["away_id"]} == {ids[0], ids[1]}
+    )
+    expected_scores = (2, 1) if preserved["home_id"] == match["home_id"] else (1, 2)
+    assert preserved["played"] is True
+    assert (preserved["home_score"], preserved["away_score"]) == expected_scores
+    assert sum(item["played"] for item in rebuilt_matches) == 1
 
     assert client.post(f"/api/tournaments/{tid}/close").status_code == 200
     closed_edit = client.put(

@@ -77,6 +77,10 @@ export default function TournamentDetail() {
       ])
       if (signal?.aborted) return
       setT(detail)
+      if (detail.status === 'completed') {
+        setEditingParticipants(false)
+        setConfirmRosterRebuild(false)
+      }
       setMatches(ms)
       setTables(st.tables)
     } catch (e) {
@@ -212,7 +216,7 @@ export default function TournamentDetail() {
     }
   }
 
-  async function saveRoster(replaceResults: boolean) {
+  async function saveRoster(confirmRebuild: boolean) {
     if (!t) return
     setRosterSaving(true)
     setError('')
@@ -223,7 +227,7 @@ export default function TournamentDetail() {
       const updated = await api.updateTournamentParticipants(t.id, {
         player_ids: rosterPlayerIds,
         participant_teams: participantTeams,
-        replace_results: replaceResults,
+        confirm_rebuild: confirmRebuild,
       })
       setT(updated)
       setEditingParticipants(false)
@@ -341,6 +345,8 @@ export default function TournamentDetail() {
     try {
       const closed = await api.closeTournament(t.id, elapsedOverride)
       setT(closed)
+      setEditingParticipants(false)
+      setConfirmRosterRebuild(false)
       setConfirmClose(false)
       setCloseDurationEdited(false)
       setCloseDurationError('')
@@ -571,7 +577,7 @@ export default function TournamentDetail() {
           </Link>
         </div>
       </div>
-      {editingParticipants && (
+      {editingParticipants && t.status === 'active' && (
         <section className="panel roster-editor" aria-label="Edit tournament participants">
           <div className="row between">
             <div>
@@ -584,7 +590,7 @@ export default function TournamentDetail() {
           </div>
           {hasRecordedResults && (
             <p className="muted small" style={{ marginTop: '0.7rem' }}>
-              This tournament has entered scores. Saving roster changes requires confirmation and will replace all fixtures and results.
+              This tournament has entered scores. Results for matchups that still exist in the rebuilt schedule will be kept; incompatible results will be removed.
             </p>
           )}
           <div className="search-field roster-search">
@@ -756,6 +762,16 @@ export default function TournamentDetail() {
             {closeDurationError && <div className="error" role="alert">{closeDurationError}</div>}
           </div>
         </ConfirmDialog>
+      )}
+      {confirmRosterRebuild && (
+        <ConfirmDialog
+          title="Rebuild fixtures with this roster?"
+          message="The schedule will be rebuilt. Scores are kept for matchups that still exist; results that cannot be matched to the new schedule will be removed. This cannot be undone."
+          confirmLabel="Rebuild fixtures"
+          onConfirm={() => void saveRoster(true)}
+          onCancel={() => setConfirmRosterRebuild(false)}
+          busy={rosterSaving}
+        />
       )}
 
       {hasTables && (

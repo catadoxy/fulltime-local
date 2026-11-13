@@ -87,7 +87,7 @@ def update_tournament_participants(
             t,
             payload.player_ids,
             payload.participant_teams,
-            replace_results=payload.replace_results,
+            confirm_rebuild=payload.confirm_rebuild,
         )
     except ValueError as exc:
         db.rollback()

@@ -170,7 +170,7 @@ def update_tournament_roster(
     player_ids: list[int],
     participant_teams: dict[int, int],
     *,
-    replace_results: bool = False,
+    confirm_rebuild: bool = False,
 ) -> Tournament:
     if tournament.status != "active":
         raise ValueError("Reopen this tournament before changing participants")
@@ -193,12 +193,40 @@ def update_tournament_roster(
     old_matches = db.execute(
         select(Match).where(Match.tournament_id == tournament.id)
     ).scalars().all()
+    old_started_at = tournament.started_at
     has_results = any(
         match.played and (match.home_score is not None or match.away_score is not None)
         for match in old_matches
     )
-    if has_results and not replace_results:
-        raise ValueError("Changing participants will erase entered results; confirm the fixture rebuild")
+    if has_results and not confirm_rebuild:
+        raise ValueError("Changing participants requires confirmation to rebuild fixtures and reconcile scores")
+
+    retained_player_ids = set(player_ids)
+    old_group_names = {
+        group.id: group.name
+        for group in db.execute(select(Group).where(Group.tournament_id == tournament.id)).scalars().all()
+    }
+    saved_results: dict[tuple, list[dict]] = {}
+    for match in sorted(old_matches, key=lambda item: (item.round_number, item.match_number, item.id)):
+        if (
+            not match.played
+            or (match.home_score is None and match.away_score is None)
+            or match.home_id not in retained_player_ids
+            or match.away_id not in retained_player_ids
+        ):
+            continue
+        group_name = old_group_names.get(match.group_id) if match.stage == "group" else None
+        pair = tuple(sorted((match.home_id, match.away_id)))
+        key = (match.stage, group_name, pair)
+        saved_results.setdefault(key, []).append({
+            "home_id": match.home_id,
+            "away_id": match.away_id,
+            "home_score": match.home_score,
+            "away_score": match.away_score,
+            "home_pen": match.home_pen,
+            "away_pen": match.away_pen,
+            "winner_id": match.winner_id,
+        })
 
     db.execute(delete(Match).where(Match.tournament_id == tournament.id))
     db.execute(delete(Participant).where(Participant.tournament_id == tournament.id))
@@ -213,6 +241,40 @@ def update_tournament_roster(
         settings.pop(key, None)
     tournament.settings = settings
     _generate_tournament(db, tournament, player_ids, participant_teams)
+
+    new_group_names = {
+        group.id: group.name
+        for group in db.execute(select(Group).where(Group.tournament_id == tournament.id)).scalars().all()
+    }
+    new_matches = db.execute(
+        select(Match)
+        .where(Match.tournament_id == tournament.id)
+        .order_by(Match.round_number, Match.match_number, Match.id)
+    ).scalars().all()
+    from .results import propagate
+
+    preserved_result_count = 0
+    for match in new_matches:
+        if match.played or match.home_id is None or match.away_id is None:
+            continue
+        group_name = new_group_names.get(match.group_id) if match.stage == "group" else None
+        pair = tuple(sorted((match.home_id, match.away_id)))
+        result_queue = saved_results.get((match.stage, group_name, pair))
+        if not result_queue:
+            continue
+        old_result = result_queue.pop(0)
+        same_orientation = match.home_id == old_result["home_id"]
+        match.home_score = old_result["home_score"] if same_orientation else old_result["away_score"]
+        match.away_score = old_result["away_score"] if same_orientation else old_result["home_score"]
+        match.home_pen = old_result["home_pen"] if same_orientation else old_result["away_pen"]
+        match.away_pen = old_result["away_pen"] if same_orientation else old_result["home_pen"]
+        match.winner_id = old_result["winner_id"]
+        match.played = True
+        preserved_result_count += 1
+        if match.winner_id is not None and match.next_match_id is not None:
+            propagate(db, tournament, match, match.winner_id)
+
+    tournament.started_at = old_started_at if preserved_result_count else None
     db.commit()
     db.refresh(tournament)
     return tournament
