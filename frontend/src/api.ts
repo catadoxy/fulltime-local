@@ -59,6 +59,8 @@ async function uploadFullTimeBackup(path: string, file: File, replace = false): 
 }
 
 export const api = {
+  health: (signal?: AbortSignal) =>
+    http<{ status: string; version: string }>('/api/health', { signal }),
   meta: (signal?: AbortSignal) => http<Meta>('/api/meta', { signal }),
   settings: (signal?: AbortSignal) =>
     http<{ football_data_configured: boolean }>('/api/settings', { signal }),

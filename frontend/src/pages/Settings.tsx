@@ -11,9 +11,22 @@ export default function Settings() {
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [version, setVersion] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const isAdmin = auth.user?.role === 'admin'
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    api.health(ctrl.signal)
+      .then((data) => {
+        if (!ctrl.signal.aborted) setVersion(data.version)
+      })
+      .catch(() => {
+        /* Version footer is optional if the health endpoint is unavailable. */
+      })
+    return () => ctrl.abort()
+  }, [])
 
   useEffect(() => {
     if (!canEdit) return
@@ -140,6 +153,12 @@ export default function Settings() {
           busy={busy}
         />
       )}
+      <footer className="settings-meta muted small">
+        FullTime Local{version ? ` v${version}` : ''} ·{' '}
+        <a href="https://github.com/catadoxy/fulltime-local" target="_blank" rel="noreferrer">
+          GitHub repository ↗
+        </a>
+      </footer>
     </div>
   )
 }

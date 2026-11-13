@@ -180,6 +180,62 @@ export default function Compare() {
       {data && (
         <>
           <div className="panel">
+            <h3 style={{ marginTop: 0 }}>Overall</h3>
+            <TableWrap>
+              <table className="compare-table">
+              <thead>
+                <tr>
+                  <th>
+                    <Link to={`/players/${data.a.player.id}`}>{data.a.player.name}</Link>
+                  </th>
+                  <th>Metric</th>
+                  <th>
+                    <Link to={`/players/${data.b.player.id}`}>{data.b.player.name}</Link>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <Section label="Tournaments" />
+                <Row label="Rating" a={data.a.tournaments.rating} b={data.b.tournaments.rating} />
+                <Row label="Elo" a={data.a.tournaments.elo} b={data.b.tournaments.elo} />
+                <Row label="Titles" a={data.a.tournaments.titles ?? 0} b={data.b.tournaments.titles ?? 0} />
+                <Row label="Matches" a={data.a.tournaments.played} b={data.b.tournaments.played} neutral />
+                <Row label="Wins" a={data.a.tournaments.won} b={data.b.tournaments.won} />
+                <Row label="Draws" a={data.a.tournaments.drawn} b={data.b.tournaments.drawn} neutral />
+                <Row label="Losses" a={data.a.tournaments.lost} b={data.b.tournaments.lost} lower />
+                <Row label="Goals for" a={data.a.tournaments.goals_for} b={data.b.tournaments.goals_for} />
+                <Row label="Goals against" a={data.a.tournaments.goals_against} b={data.b.tournaments.goals_against} lower />
+                <Row
+                  label="Goal difference"
+                  a={data.a.tournaments.goals_for - data.a.tournaments.goals_against}
+                  b={data.b.tournaments.goals_for - data.b.tournaments.goals_against}
+                />
+                <Row
+                  label="Goals per match"
+                  a={avg(data.a.tournaments.goals_for, data.a.tournaments.played)}
+                  b={avg(data.b.tournaments.goals_for, data.b.tournaments.played)}
+                />
+                <Row label="Win rate" suffix="%" a={data.a.tournaments.win_rate} b={data.b.tournaments.win_rate} />
+
+                {(data.a.friendlies.played > 0 || data.b.friendlies.played > 0) && (
+                  <>
+                    <Section label="Friendlies" />
+                    <Row label="Friendly rating" a={data.a.friendlies.rating} b={data.b.friendlies.rating} />
+                    <Row label="Friendly Elo" a={data.a.friendlies.elo} b={data.b.friendlies.elo} />
+                    <Row label="Played" a={data.a.friendlies.played} b={data.b.friendlies.played} neutral />
+                    <Row label="Wins" a={data.a.friendlies.won} b={data.b.friendlies.won} />
+                    <Row label="Draws" a={data.a.friendlies.drawn} b={data.b.friendlies.drawn} neutral />
+                    <Row label="Losses" a={data.a.friendlies.lost} b={data.b.friendlies.lost} lower />
+                    <Row label="Goals for" a={data.a.friendlies.goals_for} b={data.b.friendlies.goals_for} />
+                    <Row label="Goals against" a={data.a.friendlies.goals_against} b={data.b.friendlies.goals_against} lower />
+                    <Row label="Win rate" suffix="%" a={data.a.friendlies.win_rate} b={data.b.friendlies.win_rate} />
+                  </>
+                )}
+              </tbody>
+              </table>
+            </TableWrap>
+          </div>
+          <div className="panel">
             <h3 style={{ marginTop: 0 }}>Head to head</h3>
             <div className="h2h">
               <div className="h2h-name">{data.a.player.name}</div>
@@ -267,62 +323,6 @@ export default function Compare() {
             )}
           </div>
 
-          <div className="panel">
-            <h3 style={{ marginTop: 0 }}>Overall</h3>
-            <TableWrap>
-              <table className="compare-table">
-              <thead>
-                <tr>
-                  <th>
-                    <Link to={`/players/${data.a.player.id}`}>{data.a.player.name}</Link>
-                  </th>
-                  <th>Metric</th>
-                  <th>
-                    <Link to={`/players/${data.b.player.id}`}>{data.b.player.name}</Link>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <Section label="Tournaments" />
-                <Row label="Rating" a={data.a.tournaments.rating} b={data.b.tournaments.rating} />
-                <Row label="Elo" a={data.a.tournaments.elo} b={data.b.tournaments.elo} />
-                <Row label="Titles" a={data.a.tournaments.titles ?? 0} b={data.b.tournaments.titles ?? 0} />
-                <Row label="Matches" a={data.a.tournaments.played} b={data.b.tournaments.played} neutral />
-                <Row label="Wins" a={data.a.tournaments.won} b={data.b.tournaments.won} />
-                <Row label="Draws" a={data.a.tournaments.drawn} b={data.b.tournaments.drawn} neutral />
-                <Row label="Losses" a={data.a.tournaments.lost} b={data.b.tournaments.lost} lower />
-                <Row label="Goals for" a={data.a.tournaments.goals_for} b={data.b.tournaments.goals_for} />
-                <Row label="Goals against" a={data.a.tournaments.goals_against} b={data.b.tournaments.goals_against} lower />
-                <Row
-                  label="Goal difference"
-                  a={data.a.tournaments.goals_for - data.a.tournaments.goals_against}
-                  b={data.b.tournaments.goals_for - data.b.tournaments.goals_against}
-                />
-                <Row
-                  label="Goals per match"
-                  a={avg(data.a.tournaments.goals_for, data.a.tournaments.played)}
-                  b={avg(data.b.tournaments.goals_for, data.b.tournaments.played)}
-                />
-                <Row label="Win rate" suffix="%" a={data.a.tournaments.win_rate} b={data.b.tournaments.win_rate} />
-
-                {(data.a.friendlies.played > 0 || data.b.friendlies.played > 0) && (
-                  <>
-                    <Section label="Friendlies" />
-                    <Row label="Friendly rating" a={data.a.friendlies.rating} b={data.b.friendlies.rating} />
-                    <Row label="Friendly Elo" a={data.a.friendlies.elo} b={data.b.friendlies.elo} />
-                    <Row label="Played" a={data.a.friendlies.played} b={data.b.friendlies.played} neutral />
-                    <Row label="Wins" a={data.a.friendlies.won} b={data.b.friendlies.won} />
-                    <Row label="Draws" a={data.a.friendlies.drawn} b={data.b.friendlies.drawn} neutral />
-                    <Row label="Losses" a={data.a.friendlies.lost} b={data.b.friendlies.lost} lower />
-                    <Row label="Goals for" a={data.a.friendlies.goals_for} b={data.b.friendlies.goals_for} />
-                    <Row label="Goals against" a={data.a.friendlies.goals_against} b={data.b.friendlies.goals_against} lower />
-                    <Row label="Win rate" suffix="%" a={data.a.friendlies.win_rate} b={data.b.friendlies.win_rate} />
-                  </>
-                )}
-              </tbody>
-              </table>
-            </TableWrap>
-          </div>
         </>
       )}
     </div>
