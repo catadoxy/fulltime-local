@@ -367,7 +367,8 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .friendly-table td.score { font-weight: 650; font-variant-numeric: tabular-nums; }
 .friendly-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
 .friendly-tip { margin: 0 0 0.75rem; }
-.friendly-pagination { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.8rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.friendly-pagination,
+.record-pagination { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.8rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
 
 /* ---- Badges ---- */
 .badge {
@@ -775,8 +776,10 @@ th.num .th-button { margin-left: auto; }
     grid-area: delete;
     text-align: right;
   }
-  .friendly-pagination { flex-direction: column; align-items: stretch; }
-  .friendly-pagination .row { justify-content: space-between; }
+  .friendly-pagination,
+  .record-pagination { flex-direction: column; align-items: stretch; }
+  .friendly-pagination .row,
+  .record-pagination .row { justify-content: space-between; }
 
   .table-wrap.wide > .tournaments-table,
   .table-wrap.wide > .standings-table,

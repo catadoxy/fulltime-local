@@ -22,6 +22,7 @@ export default function Tournaments() {
 
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
+  const [gameTags, setGameTags] = useState<string[]>([])
   const [startDate, setStartDate] = useState('')
   const [format, setFormat] = useState<TournamentFormat>('league')
   const [nbPitches, setNbPitches] = useState(1)
@@ -56,6 +57,7 @@ export default function Tournaments() {
         setTournaments(ts)
         setPlayers(ps)
         setFootballConfigured(appSettings.football_data_configured)
+        setGameTags(meta.game_tags ?? [])
         const cal = meta.calibration
         if (cal && cal.samples >= 2 && cal.median_slot_minutes) {
           setCalibration({
@@ -246,8 +248,12 @@ export default function Tournaments() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. FIFA 24, Rocket League"
+                list="tournament-game-tags"
                 className="full"
               />
+              <datalist id="tournament-game-tags">
+                {gameTags.map((tag) => <option key={tag} value={tag} />)}
+              </datalist>
             </div>
             <div>
               <label htmlFor="new-date">Start date (optional)</label>

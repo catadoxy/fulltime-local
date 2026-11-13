@@ -127,6 +127,8 @@ export default function PlayerDetail() {
   const [loading, setLoading] = useState(true)
   const [historyQuery, setHistoryQuery] = useState('')
   const [friendlyQuery, setFriendlyQuery] = useState('')
+  const [historyPage, setHistoryPage] = useState(1)
+  const [friendlyPage, setFriendlyPage] = useState(1)
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [realDraft, setRealDraft] = useState('')
@@ -148,6 +150,10 @@ export default function PlayerDetail() {
     const ctrl = new AbortController()
     setLoading(true)
     setTimeline(null)
+    setHistoryPage(1)
+    setFriendlyPage(1)
+    setHistoryQuery('')
+    setFriendlyQuery('')
     api
       .playerStats(pid, ctrl.signal)
       .then((s) => {
@@ -179,6 +185,23 @@ export default function PlayerDetail() {
     )
 
   const { player, rating, friendly_rating, tournaments: tr, friendlies: fr } = stats
+  const pageSize = 10
+  const filteredHistory = tr.history.filter((item) =>
+    historyQuery.trim()
+      ? item.name.toLowerCase().includes(historyQuery.trim().toLowerCase())
+      : true,
+  )
+  const historyPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize))
+  const currentHistoryPage = Math.min(historyPage, historyPages)
+  const visibleHistory = filteredHistory.slice((currentHistoryPage - 1) * pageSize, currentHistoryPage * pageSize)
+  const filteredFriendlies = fr.matches.filter((match) =>
+    friendlyQuery.trim()
+      ? `${match.opponent_name} ${match.note ?? ''}`.toLowerCase().includes(friendlyQuery.trim().toLowerCase())
+      : true,
+  )
+  const friendlyPages = Math.max(1, Math.ceil(filteredFriendlies.length / pageSize))
+  const currentFriendlyPage = Math.min(friendlyPage, friendlyPages)
+  const visibleFriendlies = filteredFriendlies.slice((currentFriendlyPage - 1) * pageSize, currentFriendlyPage * pageSize)
 
   async function savePlayer() {
     setSaving(true)
@@ -337,7 +360,10 @@ export default function PlayerDetail() {
                     type="search"
                     value={historyQuery}
                     placeholder="Tournament name…"
-                    onChange={(e) => setHistoryQuery(e.target.value)}
+                    onChange={(e) => {
+                      setHistoryQuery(e.target.value)
+                      setHistoryPage(1)
+                    }}
                   />
                 </div>
               )}
@@ -359,13 +385,7 @@ export default function PlayerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {tr.history
-                  .filter((h) =>
-                    historyQuery.trim()
-                      ? h.name.toLowerCase().includes(historyQuery.trim().toLowerCase())
-                      : true,
-                  )
-                  .map((h) => (
+                {visibleHistory.map((h) => (
                   <tr key={h.tournament_id}>
                     <td>
                       <Link to={`/t/${h.tournament_id}`}>{h.name}</Link>
@@ -389,27 +409,32 @@ export default function PlayerDetail() {
                     </td>
                   </tr>
                 ))}
-                {tr.history.length === 0 && (
+                {filteredHistory.length === 0 && (
                   <tr>
                     <td colSpan={10} className="muted">
-                      No tournaments played yet.
+                      {historyQuery.trim() ? `No tournaments match “${historyQuery.trim()}”.` : 'No tournaments played yet.'}
                     </td>
                   </tr>
                 )}
-                {tr.history.length > 0 &&
-                  historyQuery.trim() &&
-                  tr.history.filter((h) =>
-                    h.name.toLowerCase().includes(historyQuery.trim().toLowerCase()),
-                  ).length === 0 && (
-                    <tr>
-                      <td colSpan={10} className="muted">
-                        No tournaments match “{historyQuery.trim()}”.
-                      </td>
-                    </tr>
-                  )}
               </tbody>
               </table>
             </TableWrap>
+            {filteredHistory.length > pageSize && (
+              <div className="record-pagination">
+                <span className="muted small">
+                  Showing {(currentHistoryPage - 1) * pageSize + 1}–{Math.min(currentHistoryPage * pageSize, filteredHistory.length)} of {filteredHistory.length}
+                </span>
+                <div className="row">
+                  <button type="button" disabled={currentHistoryPage <= 1} onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}>
+                    Previous
+                  </button>
+                  <span className="muted small">Page {currentHistoryPage} of {historyPages}</span>
+                  <button type="button" disabled={currentHistoryPage >= historyPages} onClick={() => setHistoryPage((current) => Math.min(historyPages, current + 1))}>
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -445,7 +470,10 @@ export default function PlayerDetail() {
                     type="search"
                     value={friendlyQuery}
                     placeholder="Opponent or note…"
-                    onChange={(e) => setFriendlyQuery(e.target.value)}
+                    onChange={(e) => {
+                      setFriendlyQuery(e.target.value)
+                      setFriendlyPage(1)
+                    }}
                   />
                 </div>
               )}
@@ -463,15 +491,7 @@ export default function PlayerDetail() {
                   </tr>
                 </thead>
               <tbody>
-                {fr.matches
-                  .filter((m) =>
-                    friendlyQuery.trim()
-                      ? `${m.opponent_name} ${m.note ?? ''}`
-                          .toLowerCase()
-                          .includes(friendlyQuery.trim().toLowerCase())
-                      : true,
-                  )
-                  .map((m) => (
+                {visibleFriendlies.map((m) => (
                   <tr key={m.id}>
                     <td className="muted small">{m.played_at}</td>
                     <td>
@@ -491,16 +511,32 @@ export default function PlayerDetail() {
                     <td className="muted small">{m.note || '—'}</td>
                   </tr>
                 ))}
-                {fr.matches.length === 0 && (
+                {filteredFriendlies.length === 0 && (
                   <tr>
                     <td colSpan={6} className="muted">
-                      No friendlies recorded yet.
+                      {friendlyQuery.trim() ? `No friendlies match “${friendlyQuery.trim()}”.` : 'No friendlies recorded yet.'}
                     </td>
                   </tr>
                 )}
               </tbody>
               </table>
             </TableWrap>
+            {filteredFriendlies.length > pageSize && (
+              <div className="record-pagination">
+                <span className="muted small">
+                  Showing {(currentFriendlyPage - 1) * pageSize + 1}–{Math.min(currentFriendlyPage * pageSize, filteredFriendlies.length)} of {filteredFriendlies.length}
+                </span>
+                <div className="row">
+                  <button type="button" disabled={currentFriendlyPage <= 1} onClick={() => setFriendlyPage((current) => Math.max(1, current - 1))}>
+                    Previous
+                  </button>
+                  <span className="muted small">Page {currentFriendlyPage} of {friendlyPages}</span>
+                  <button type="button" disabled={currentFriendlyPage >= friendlyPages} onClick={() => setFriendlyPage((current) => Math.min(friendlyPages, current + 1))}>
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -5,11 +5,13 @@ import os
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import DATABASE_URL
 from ..database import engine, get_db
 from ..fulltime_import import import_fulltime_backup
+from ..models import Game, Tournament
 from ..services.estimate import slot_calibration
 from ..services.fixtures import default_settings
 
@@ -26,10 +28,20 @@ FORMATS = [
 
 @router.get("/meta")
 def meta(db: Session = Depends(get_db)):
+    tags_by_key: dict[str, str] = {}
+    notes = [
+        *db.execute(select(Tournament.note).where(Tournament.note.is_not(None))).scalars().all(),
+        *db.execute(select(Game.note).where(Game.note.is_not(None))).scalars().all(),
+    ]
+    for note in notes:
+        tag = str(note).strip()
+        if tag:
+            tags_by_key.setdefault(tag.casefold(), tag)
     return {
         "formats": FORMATS,
         "default_settings": {f["id"]: default_settings(f["id"]) for f in FORMATS},
         "calibration": slot_calibration(db),
+        "game_tags": sorted(tags_by_key.values(), key=str.casefold),
     }
 
 

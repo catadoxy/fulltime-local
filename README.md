@@ -18,9 +18,9 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Results & standings** — enter scores, tables update, knockouts advance, with a
   bracket view and an automatic champion.
 - **Friendlies** — record casual one-off matches alongside tournaments, optionally assign clubs to each side, and
-  browse match history with pagination.
+  browse match history with pagination. Player names link directly to their profiles.
 - **Player profiles** — nickname + real name, plus separate tournament and
-  friendly tabs.
+  friendly tabs with paginated histories.
 - **Compare** any two players (head-to-head and side-by-side), or jump straight from a friendly to its players'
   comparison.
 - **Form charts** — Elo, rating and cumulative goals over time on each player profile.

@@ -159,6 +159,7 @@ export interface Table {
 export interface Meta {
   formats: { id: TournamentFormat; label: string }[]
   default_settings: Record<string, TournamentSettings>
+  game_tags?: string[]
   calibration?: {
     samples: number
     median_slot_minutes: number | null

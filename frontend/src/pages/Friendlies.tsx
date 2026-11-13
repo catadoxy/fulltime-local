@@ -20,6 +20,7 @@ export default function Friendlies() {
   const [awayScore, setAwayScore] = useState('')
   const [playedAt, setPlayedAt] = useState(today())
   const [note, setNote] = useState('')
+  const [gameTags, setGameTags] = useState<string[]>([])
   const [footballConfigured, setFootballConfigured] = useState(false)
   const [teamAssignments, setTeamAssignments] = useState<Record<string, number>>({})
   const [page, setPage] = useState(1)
@@ -32,15 +33,17 @@ export default function Friendlies() {
   const load = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
-      const [gs, ps, appSettings] = await Promise.all([
+      const [gs, ps, appSettings, meta] = await Promise.all([
         api.games({ limit: 1000 }, signal),
         api.players({ limit: 500 }, signal),
         api.settings(signal),
+        api.meta(signal),
       ])
       if (!signal?.aborted) {
         setGames(gs)
         setPlayers(ps)
         setFootballConfigured(appSettings.football_data_configured)
+        setGameTags(meta.game_tags ?? [])
       }
     } catch (e) {
       if (!signal?.aborted) setError(e instanceof Error ? e.message : String(e))
@@ -191,8 +194,12 @@ export default function Friendlies() {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Rocket League, best of 3"
+              list="friendly-game-tags"
               maxLength={500}
             />
+            <datalist id="friendly-game-tags">
+              {gameTags.map((tag) => <option key={tag} value={tag} />)}
+            </datalist>
           </div>
           <button className="primary" type="submit" disabled={busy}>
             {busy ? 'Adding…' : 'Add friendly'}
@@ -246,13 +253,17 @@ export default function Friendlies() {
                 <tr key={g.id}>
                   <td className="muted small">{g.played_at}</td>
                   <td className={`home ${homeWin ? 'won' : ''}`}>
-                    <TeamLabel team={g.home_team}>{g.home_name}</TeamLabel>
+                    <TeamLabel team={g.home_team}>
+                      <Link to={`/players/${g.home_id}`}>{g.home_name}</Link>
+                    </TeamLabel>
                   </td>
                   <td className="score">
                     {g.home_score}–{g.away_score}
                   </td>
                   <td className={`away ${awayWin ? 'won' : ''}`}>
-                    <TeamLabel team={g.away_team}>{g.away_name}</TeamLabel>
+                    <TeamLabel team={g.away_team}>
+                      <Link to={`/players/${g.away_id}`}>{g.away_name}</Link>
+                    </TeamLabel>
                   </td>
                   <td className="muted small">{g.note || '—'}</td>
                   <td className="friendly-actions">

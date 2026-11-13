@@ -269,6 +269,27 @@ def test_games():
     assert client.get("/api/games").json() == []
 
 
+def test_meta_suggests_existing_game_names():
+    _reset()
+    ids = _make_players(2)
+    client.post("/api/tournaments", json={
+        "name": "FIFA event", "format": "league", "player_ids": ids, "note": "FIFA 27",
+    })
+    client.post("/api/tournaments", json={
+        "name": "PES event", "format": "league", "player_ids": ids, "note": "PES",
+    })
+    client.post("/api/games", json={
+        "home_id": ids[0], "away_id": ids[1], "home_score": 1, "away_score": 0,
+        "note": " fifa 27 ",
+    })
+    client.post("/api/games", json={
+        "home_id": ids[1], "away_id": ids[0], "home_score": 1, "away_score": 0,
+        "note": "Rocket League",
+    })
+
+    assert client.get("/api/meta").json()["game_tags"] == ["FIFA 27", "PES", "Rocket League"]
+
+
 def test_league_auto_completes():
     _reset()
     ids = _make_players(2)
