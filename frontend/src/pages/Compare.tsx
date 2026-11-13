@@ -67,6 +67,7 @@ export default function Compare() {
   const [data, setData] = useState<CompareResult | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [headToHeadPage, setHeadToHeadPage] = useState(1)
 
   // Fix setA/setB clearing: keep both params in sync
   const updateA = (v: string) => {
@@ -95,6 +96,7 @@ export default function Compare() {
 
   useEffect(() => {
     setError('')
+    setHeadToHeadPage(1)
     if (!a || !b || a === b) {
       setData(null)
       return
@@ -114,6 +116,15 @@ export default function Compare() {
       })
     return () => ctrl.abort()
   }, [a, b])
+
+  const headToHeadMatches = data?.head_to_head.matches ?? []
+  const headToHeadPageSize = 10
+  const headToHeadPageCount = Math.max(1, Math.ceil(headToHeadMatches.length / headToHeadPageSize))
+  const currentHeadToHeadPage = Math.min(headToHeadPage, headToHeadPageCount)
+  const visibleHeadToHeadMatches = headToHeadMatches.slice(
+    (currentHeadToHeadPage - 1) * headToHeadPageSize,
+    currentHeadToHeadPage * headToHeadPageSize,
+  )
 
   return (
     <div>
@@ -202,7 +213,7 @@ export default function Compare() {
                   </tr>
                 </thead>
               <tbody>
-                {data.head_to_head.matches.map((m, i) => (
+                {visibleHeadToHeadMatches.map((m, i) => (
                   <tr key={i}>
                     <td className="muted small">{m.date ?? '—'}</td>
                     <td>{m.kind === 'friendly' ? 'Friendly' : m.competition}</td>
@@ -230,6 +241,30 @@ export default function Compare() {
               </tbody>
               </table>
             </TableWrap>
+            {headToHeadMatches.length > headToHeadPageSize && (
+              <div className="record-pagination">
+                <span className="muted small">
+                  Showing {(currentHeadToHeadPage - 1) * headToHeadPageSize + 1}–{Math.min(currentHeadToHeadPage * headToHeadPageSize, headToHeadMatches.length)} of {headToHeadMatches.length}
+                </span>
+                <div className="row">
+                  <button
+                    type="button"
+                    disabled={currentHeadToHeadPage <= 1}
+                    onClick={() => setHeadToHeadPage((current) => Math.max(1, current - 1))}
+                  >
+                    Previous
+                  </button>
+                  <span className="muted small">Page {currentHeadToHeadPage} of {headToHeadPageCount}</span>
+                  <button
+                    type="button"
+                    disabled={currentHeadToHeadPage >= headToHeadPageCount}
+                    onClick={() => setHeadToHeadPage((current) => Math.min(headToHeadPageCount, current + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="panel">
