@@ -129,6 +129,14 @@ export default function PlayerDetail() {
   const [friendlyQuery, setFriendlyQuery] = useState('')
   const [historyPage, setHistoryPage] = useState(1)
   const [friendlyPage, setFriendlyPage] = useState(1)
+  const [historyDateFrom, setHistoryDateFrom] = useState('')
+  const [historyDateTo, setHistoryDateTo] = useState('')
+  const [historyClub, setHistoryClub] = useState('')
+  const [historyResult, setHistoryResult] = useState<'all' | 'champion' | 'win' | 'draw' | 'loss'>('all')
+  const [friendlyDateFrom, setFriendlyDateFrom] = useState('')
+  const [friendlyDateTo, setFriendlyDateTo] = useState('')
+  const [friendlyClub, setFriendlyClub] = useState('')
+  const [friendlyResult, setFriendlyResult] = useState<'all' | 'W' | 'D' | 'L'>('all')
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [realDraft, setRealDraft] = useState('')
@@ -154,6 +162,14 @@ export default function PlayerDetail() {
     setFriendlyPage(1)
     setHistoryQuery('')
     setFriendlyQuery('')
+    setHistoryDateFrom('')
+    setHistoryDateTo('')
+    setHistoryClub('')
+    setHistoryResult('all')
+    setFriendlyDateFrom('')
+    setFriendlyDateTo('')
+    setFriendlyClub('')
+    setFriendlyResult('all')
     api
       .playerStats(pid, ctrl.signal)
       .then((s) => {
@@ -186,19 +202,36 @@ export default function PlayerDetail() {
 
   const { player, rating, friendly_rating, tournaments: tr, friendlies: fr } = stats
   const pageSize = 10
-  const filteredHistory = tr.history.filter((item) =>
-    historyQuery.trim()
-      ? item.name.toLowerCase().includes(historyQuery.trim().toLowerCase())
-      : true,
-  )
+  const historyClubOptions = [...new Set(tr.history.map((item) => item.team_name).filter(Boolean))].sort(
+    (a, b) => (a ?? '').localeCompare(b ?? ''),
+  ) as string[]
+  const friendlyClubOptions = [...new Set(
+    fr.matches.flatMap((match) => [match.team_name, match.opponent_team_name]).filter(Boolean),
+  )].sort((a, b) => (a ?? '').localeCompare(b ?? '')) as string[]
+  const historySearch = historyQuery.trim().toLowerCase()
+  const filteredHistory = tr.history.filter((item) => {
+    if (historySearch && !`${item.name} ${item.note ?? ''}`.toLowerCase().includes(historySearch)) return false
+    if (historyDateFrom && (!item.start_date || item.start_date < historyDateFrom)) return false
+    if (historyDateTo && (!item.start_date || item.start_date > historyDateTo)) return false
+    if (historyClub && item.team_name !== historyClub) return false
+    if (historyResult === 'champion' && !item.champion) return false
+    if (historyResult === 'win' && item.won === 0) return false
+    if (historyResult === 'draw' && item.drawn === 0) return false
+    if (historyResult === 'loss' && item.lost === 0) return false
+    return true
+  })
   const historyPages = Math.max(1, Math.ceil(filteredHistory.length / pageSize))
   const currentHistoryPage = Math.min(historyPage, historyPages)
   const visibleHistory = filteredHistory.slice((currentHistoryPage - 1) * pageSize, currentHistoryPage * pageSize)
-  const filteredFriendlies = fr.matches.filter((match) =>
-    friendlyQuery.trim()
-      ? `${match.opponent_name} ${match.note ?? ''}`.toLowerCase().includes(friendlyQuery.trim().toLowerCase())
-      : true,
-  )
+  const friendlySearch = friendlyQuery.trim().toLowerCase()
+  const filteredFriendlies = fr.matches.filter((match) => {
+    if (friendlySearch && !`${match.opponent_name} ${match.opponent_team_name ?? ''} ${match.team_name ?? ''} ${match.note ?? ''}`.toLowerCase().includes(friendlySearch)) return false
+    if (friendlyDateFrom && match.played_at < friendlyDateFrom) return false
+    if (friendlyDateTo && match.played_at > friendlyDateTo) return false
+    if (friendlyClub && match.team_name !== friendlyClub && match.opponent_team_name !== friendlyClub) return false
+    if (friendlyResult !== 'all' && match.result !== friendlyResult) return false
+    return true
+  })
   const friendlyPages = Math.max(1, Math.ceil(filteredFriendlies.length / pageSize))
   const currentFriendlyPage = Math.min(friendlyPage, friendlyPages)
   const visibleFriendlies = filteredFriendlies.slice((currentFriendlyPage - 1) * pageSize, currentFriendlyPage * pageSize)
@@ -359,7 +392,7 @@ export default function PlayerDetail() {
                     id="history-search"
                     type="search"
                     value={historyQuery}
-                    placeholder="Tournament name…"
+                    placeholder="Tournament or game…"
                     onChange={(e) => {
                       setHistoryQuery(e.target.value)
                       setHistoryPage(1)
@@ -368,6 +401,46 @@ export default function PlayerDetail() {
                 </div>
               )}
             </div>
+            <details className="history-filter-details">
+              <summary>Filter tournament history</summary>
+              <div className="history-filter-grid">
+                <div>
+                  <label htmlFor="history-from">From</label>
+                  <input id="history-from" type="date" value={historyDateFrom} onChange={(e) => { setHistoryDateFrom(e.target.value); setHistoryPage(1) }} />
+                </div>
+                <div>
+                  <label htmlFor="history-to">To</label>
+                  <input id="history-to" type="date" value={historyDateTo} onChange={(e) => { setHistoryDateTo(e.target.value); setHistoryPage(1) }} />
+                </div>
+                <div>
+                  <label htmlFor="history-club">Club</label>
+                  <select id="history-club" className="full" value={historyClub} onChange={(e) => { setHistoryClub(e.target.value); setHistoryPage(1) }}>
+                    <option value="">All clubs</option>
+                    {historyClubOptions.map((club) => <option key={club} value={club}>{club}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="history-result">Result</label>
+                  <select id="history-result" className="full" value={historyResult} onChange={(e) => { setHistoryResult(e.target.value as typeof historyResult); setHistoryPage(1) }}>
+                    <option value="all">Any result</option>
+                    <option value="champion">Champion</option>
+                    <option value="win">Won a match</option>
+                    <option value="draw">Drew a match</option>
+                    <option value="loss">Lost a match</option>
+                  </select>
+                </div>
+                <button type="button" onClick={() => {
+                  setHistoryDateFrom('')
+                  setHistoryDateTo('')
+                  setHistoryClub('')
+                  setHistoryResult('all')
+                  setHistoryQuery('')
+                  setHistoryPage(1)
+                }}>
+                  Clear filters
+                </button>
+              </div>
+            </details>
             <TableWrap size="wide">
               <table className="history-table">
                 <thead>
@@ -464,7 +537,7 @@ export default function PlayerDetail() {
               <h3 style={{ margin: 0 }}>Friendly results</h3>
               {fr.matches.length > 3 && (
                 <div className="search-field" style={{ minWidth: 200 }}>
-                  <label htmlFor="friendly-search">Search friendlies</label>
+                  <label htmlFor="friendly-search">Search opponent, game or club</label>
                   <input
                     id="friendly-search"
                     type="search"
@@ -478,6 +551,45 @@ export default function PlayerDetail() {
                 </div>
               )}
             </div>
+            <details className="history-filter-details">
+              <summary>Filter friendly results</summary>
+              <div className="history-filter-grid">
+                <div>
+                  <label htmlFor="friendly-from">From</label>
+                  <input id="friendly-from" type="date" value={friendlyDateFrom} onChange={(e) => { setFriendlyDateFrom(e.target.value); setFriendlyPage(1) }} />
+                </div>
+                <div>
+                  <label htmlFor="friendly-to">To</label>
+                  <input id="friendly-to" type="date" value={friendlyDateTo} onChange={(e) => { setFriendlyDateTo(e.target.value); setFriendlyPage(1) }} />
+                </div>
+                <div>
+                  <label htmlFor="friendly-club-filter">Club</label>
+                  <select id="friendly-club-filter" className="full" value={friendlyClub} onChange={(e) => { setFriendlyClub(e.target.value); setFriendlyPage(1) }}>
+                    <option value="">All clubs</option>
+                    {friendlyClubOptions.map((club) => <option key={club} value={club}>{club}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="friendly-result-filter">Result</label>
+                  <select id="friendly-result-filter" className="full" value={friendlyResult} onChange={(e) => { setFriendlyResult(e.target.value as typeof friendlyResult); setFriendlyPage(1) }}>
+                    <option value="all">Any result</option>
+                    <option value="W">Win</option>
+                    <option value="D">Draw</option>
+                    <option value="L">Loss</option>
+                  </select>
+                </div>
+                <button type="button" onClick={() => {
+                  setFriendlyDateFrom('')
+                  setFriendlyDateTo('')
+                  setFriendlyClub('')
+                  setFriendlyResult('all')
+                  setFriendlyQuery('')
+                  setFriendlyPage(1)
+                }}>
+                  Clear filters
+                </button>
+              </div>
+            </details>
             <TableWrap size="comfortable">
               <table className="friendlies-history-table">
                 <thead>

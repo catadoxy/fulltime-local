@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
 from ..models import Game, Match, Participant, Player, Tournament
@@ -110,6 +110,7 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
     part_rows = (
         db.execute(
             select(Participant, Tournament)
+            .options(joinedload(Participant.team))
             .join(Tournament, Participant.tournament_id == Tournament.id)
             .where(Participant.player_id == player_id)
         ).all()
@@ -167,8 +168,11 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
                 "tournament_id": t.id,
                 "name": t.name,
                 "format": t.format,
+                "note": t.note,
                 "status": t.status,
                 "start_date": t.start_date,
+                "team_name": _p.team.name if _p.team else None,
+                "team_crest_url": _p.team.crest_url if _p.team else None,
                 "played": played,
                 "won": won,
                 "drawn": drawn,
@@ -196,7 +200,11 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
 
     # Standalone friendlies (batch opponent names to avoid lazy-load N+1).
     games = (
-        db.execute(select(Game).where(or_(Game.home_id == player_id, Game.away_id == player_id)))
+        db.execute(
+            select(Game)
+            .options(joinedload(Game.home_team), joinedload(Game.away_team))
+            .where(or_(Game.home_id == player_id, Game.away_id == player_id))
+        )
         .scalars()
         .all()
     )
@@ -212,6 +220,8 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
     for g in games:
         home = g.home_id == player_id
         opp_id = g.away_id if home else g.home_id
+        team = g.home_team if home else g.away_team
+        opponent_team = g.away_team if home else g.home_team
         f, a = (g.home_score, g.away_score) if home else (g.away_score, g.home_score)
         result = "W" if f > a else "L" if f < a else "D"
         f_totals["played"] += 1
@@ -224,7 +234,10 @@ def player_stats(player_id: int, db: Session = Depends(get_db)):
                 "played_at": g.played_at,
                 "opponent_id": opp_id,
                 "opponent_name": opp_names.get(opp_id, "—"),
+                "opponent_team_name": opponent_team.name if opponent_team else None,
                 "home": home,
+                "team_name": team.name if team else None,
+                "team_crest_url": team.crest_url if team else None,
                 "goals_for": f,
                 "goals_against": a,
                 "result": result,

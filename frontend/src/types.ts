@@ -182,8 +182,11 @@ export interface PlayerHistoryRow {
   tournament_id: number
   name: string
   format: string
+  note?: string | null
   status: string
   start_date: string | null
+  team_name?: string | null
+  team_crest_url?: string | null
   played: number
   won: number
   drawn: number
@@ -215,7 +218,10 @@ export interface FriendlyMatch {
   played_at: string
   opponent_id: number | null
   opponent_name: string
+  opponent_team_name?: string | null
   home: boolean
+  team_name?: string | null
+  team_crest_url?: string | null
   goals_for: number
   goals_against: number
   result: 'W' | 'D' | 'L'
