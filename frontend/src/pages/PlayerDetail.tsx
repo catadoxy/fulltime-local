@@ -3,7 +3,6 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
 import { TrendChart } from '../components/charts'
-import { csvFilename, downloadCsv, type CsvCell } from '../csv'
 import { ErrorBanner, LoadingSkeleton, TableWrap } from '../components/ui'
 import { FORMAT_LABELS } from '../labels'
 import type { PlayerStats, PlayerTimeline, TimelinePoint, TournamentFormat } from '../types'
@@ -254,92 +253,6 @@ export default function PlayerDetail() {
     }
   }
 
-  function exportPlayerProfile() {
-    const columns = [
-      'Record type', 'Player', 'Real name', 'Date', 'Event', 'Game / note', 'Format',
-      'Opponent', 'Club', 'Opponent club', 'Side', 'Result', 'Played', 'Wins', 'Draws',
-      'Losses', 'Goals for', 'Goals against', 'Win rate (%)', 'Titles', 'Champion', 'Rank',
-      'Elo', 'Rating',
-    ] as const
-    type Column = (typeof columns)[number]
-    const row = (values: Partial<Record<Column, CsvCell>>) =>
-      columns.map((column) => values[column] ?? '')
-    const rows: CsvCell[][] = [
-      row({
-        'Record type': 'Summary',
-        Player: player.name,
-        'Real name': player.real_name,
-        Event: 'Tournaments',
-        Played: tr.totals.played,
-        Wins: tr.totals.won,
-        Draws: tr.totals.drawn,
-        Losses: tr.totals.lost,
-        'Goals for': tr.totals.goals_for,
-        'Goals against': tr.totals.goals_against,
-        'Win rate (%)': tr.totals.win_rate,
-        Titles: tr.totals.titles ?? 0,
-        Elo: rating.elo,
-        Rating: rating.rating,
-      }),
-      row({
-        'Record type': 'Summary',
-        Player: player.name,
-        'Real name': player.real_name,
-        Event: 'Friendlies',
-        Played: fr.totals.played,
-        Wins: fr.totals.won,
-        Draws: fr.totals.drawn,
-        Losses: fr.totals.lost,
-        'Goals for': fr.totals.goals_for,
-        'Goals against': fr.totals.goals_against,
-        'Win rate (%)': fr.totals.win_rate,
-        Elo: friendly_rating.elo,
-        Rating: friendly_rating.rating,
-      }),
-      ...tr.history.map((item) => row({
-        'Record type': 'Tournament',
-        Player: player.name,
-        'Real name': player.real_name,
-        Date: item.start_date,
-        Event: item.name,
-        'Game / note': item.note,
-        Format: item.format,
-        Club: item.team_name,
-        Result: item.champion ? 'Champion' : item.rank ? ordinal(item.rank) : '',
-        Played: item.played,
-        Wins: item.won,
-        Draws: item.drawn,
-        Losses: item.lost,
-        'Goals for': item.goals_for,
-        'Goals against': item.goals_against,
-        'Win rate (%)': item.played ? Math.round((item.won / item.played) * 100) : 0,
-        Titles: item.champion ? 1 : 0,
-        Champion: item.champion ? 'Yes' : 'No',
-        Rank: item.rank,
-      })),
-      ...fr.matches.map((match) => row({
-        'Record type': 'Friendly',
-        Player: player.name,
-        'Real name': player.real_name,
-        Date: match.played_at,
-        Event: 'Friendly',
-        'Game / note': match.note,
-        Opponent: match.opponent_name,
-        Club: match.team_name,
-        'Opponent club': match.opponent_team_name,
-        Side: match.home ? 'Home' : 'Away',
-        Result: match.result,
-        Played: 1,
-        Wins: match.result === 'W' ? 1 : 0,
-        Draws: match.result === 'D' ? 1 : 0,
-        Losses: match.result === 'L' ? 1 : 0,
-        'Goals for': match.goals_for,
-        'Goals against': match.goals_against,
-      })),
-    ]
-    downloadCsv(`${csvFilename(player.name)}-profile.csv`, [...columns], rows)
-  }
-
   return (
     <div>
       <div className="row between page-head">
@@ -419,14 +332,9 @@ export default function PlayerDetail() {
             )}
           </div>
         </div>
-        <div className="row">
-          <button type="button" className="btn" onClick={exportPlayerProfile}>
-            Export profile CSV
-          </button>
-          <Link className="btn" to="/players">
-            ← All players
-          </Link>
-        </div>
+        <Link className="btn" to="/players">
+          ← All players
+        </Link>
       </div>
 
       <ErrorBanner message={error} onRetry={load} />
