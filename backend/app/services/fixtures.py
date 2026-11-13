@@ -5,7 +5,7 @@ import math
 import random
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..engine import knockout as ko
@@ -91,20 +91,8 @@ def draw_order(player_ids: list[int], settings: dict[str, Any]) -> list[int]:
 # --------------------------------------------------------------------------- #
 def create_tournament(db: Session, data) -> Tournament:
     player_ids = list(dict.fromkeys(data.player_ids))  # de-dupe, keep order
-    if len(player_ids) < 2:
-        raise ValueError("Select at least 2 players")
-
-    players = db.execute(select(Player).where(Player.id.in_(player_ids))).scalars().all()
-    if len(players) != len(player_ids):
-        raise ValueError("One or more players do not exist")
-
     participant_teams = {int(pid): int(team_id) for pid, team_id in data.participant_teams.items()}
-    if not set(participant_teams).issubset(player_ids):
-        raise ValueError("A team can only be assigned to a selected player")
-    teams = find_teams(db, set(participant_teams.values()))
-    if len(teams) != len(set(participant_teams.values())):
-        raise ValueError("One or more selected teams are no longer available")
-
+    _validate_roster(db, player_ids, participant_teams)
     fmt = data.format
     settings = {**default_settings(fmt), **(data.settings or {})}
     # Keep the time plan within sane bounds whatever the client sends.
@@ -121,7 +109,34 @@ def create_tournament(db: Session, data) -> Tournament:
     )
     db.add(tournament)
     db.flush()
+    _generate_tournament(db, tournament, player_ids, participant_teams)
+    db.commit()
+    db.refresh(tournament)
+    return tournament
 
+
+def _validate_roster(db: Session, player_ids: list[int], participant_teams: dict[int, int]) -> None:
+    if len(player_ids) < 2:
+        raise ValueError("Select at least 2 players")
+
+    players = db.execute(select(Player).where(Player.id.in_(player_ids))).scalars().all()
+    if len(players) != len(player_ids):
+        raise ValueError("One or more players do not exist")
+    if not set(participant_teams).issubset(player_ids):
+        raise ValueError("A team can only be assigned to a selected player")
+    teams = find_teams(db, set(participant_teams.values()))
+    if len(teams) != len(set(participant_teams.values())):
+        raise ValueError("One or more selected teams are no longer available")
+
+
+def _generate_tournament(
+    db: Session,
+    tournament: Tournament,
+    player_ids: list[int],
+    participant_teams: dict[int, int],
+) -> None:
+    fmt = tournament.format
+    settings = tournament.settings or {}
     # Random draw by default; the picked order is only used when disabled.
     order = draw_order(player_ids, settings)
     for i, pid in enumerate(order):
@@ -148,6 +163,56 @@ def create_tournament(db: Session, data) -> Tournament:
     else:
         raise ValueError(f"Unknown format: {fmt}")
 
+
+def update_tournament_roster(
+    db: Session,
+    tournament: Tournament,
+    player_ids: list[int],
+    participant_teams: dict[int, int],
+    *,
+    replace_results: bool = False,
+) -> Tournament:
+    if tournament.status != "active":
+        raise ValueError("Reopen this tournament before changing participants")
+    player_ids = list(dict.fromkeys(int(pid) for pid in player_ids))
+    participant_teams = {int(pid): int(team_id) for pid, team_id in participant_teams.items()}
+    _validate_roster(db, player_ids, participant_teams)
+
+    existing_participants = db.execute(
+        select(Participant).where(Participant.tournament_id == tournament.id)
+    ).scalars().all()
+    existing_player_ids = {participant.player_id for participant in existing_participants}
+    if len(existing_participants) == len(player_ids) and existing_player_ids == set(player_ids):
+        # A club-only edit does not change fixtures or invalidate scores.
+        for participant in existing_participants:
+            participant.team_id = participant_teams.get(participant.player_id)
+        db.commit()
+        db.refresh(tournament)
+        return tournament
+
+    old_matches = db.execute(
+        select(Match).where(Match.tournament_id == tournament.id)
+    ).scalars().all()
+    has_results = any(
+        match.played and (match.home_score is not None or match.away_score is not None)
+        for match in old_matches
+    )
+    if has_results and not replace_results:
+        raise ValueError("Changing participants will erase entered results; confirm the fixture rebuild")
+
+    db.execute(delete(Match).where(Match.tournament_id == tournament.id))
+    db.execute(delete(Participant).where(Participant.tournament_id == tournament.id))
+    db.execute(delete(Group).where(Group.tournament_id == tournament.id))
+    tournament.champion_id = None
+    tournament.started_at = None
+    tournament.finished_at = None
+    tournament.elapsed_minutes_override = None
+    tournament.end_date = None
+    settings = dict(tournament.settings or {})
+    for key in ("current_round", "knockout_seeded", "knockout_size", "reopened"):
+        settings.pop(key, None)
+    tournament.settings = settings
+    _generate_tournament(db, tournament, player_ids, participant_teams)
     db.commit()
     db.refresh(tournament)
     return tournament

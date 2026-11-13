@@ -58,6 +58,12 @@ class TournamentUpdate(BaseModel):
     elapsed_minutes_override: int | None = Field(default=None, ge=0, le=525600)
 
 
+class TournamentParticipantsUpdate(BaseModel):
+    player_ids: list[int] = Field(min_length=2)
+    participant_teams: dict[int, int] = Field(default_factory=dict)
+    replace_results: bool = False
+
+
 class TournamentClose(BaseModel):
     elapsed_minutes_override: int | None = Field(default=None, ge=0, le=525600)
 

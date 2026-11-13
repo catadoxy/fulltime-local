@@ -151,6 +151,14 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  updateTournamentParticipants: (
+    id: number,
+    data: { player_ids: number[]; participant_teams: Record<string, number>; replace_results: boolean },
+  ) =>
+    http<TournamentDetail>(`/api/tournaments/${id}/participants`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
   deleteTournament: (id: number) =>
     http<void>(`/api/tournaments/${id}`, { method: 'DELETE' }),
   closeTournament: (id: number, elapsedMinutesOverride?: number) =>

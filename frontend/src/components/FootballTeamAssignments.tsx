@@ -12,15 +12,17 @@ export default function FootballTeamAssignments({
   assignments,
   values,
   onChange,
+  initialTeams = [],
 }: {
   assignments: Assignment[]
   values: Record<string, number>
   onChange: (key: string, teamId: number | null) => void
+  initialTeams?: FootballTeam[]
 }) {
   const [expanded, setExpanded] = useState(false)
   const [competitions, setCompetitions] = useState<FootballCompetition[]>([])
   const [competitionCode, setCompetitionCode] = useState('')
-  const [teams, setTeams] = useState<FootballTeam[]>([])
+  const [teams, setTeams] = useState<FootballTeam[]>(initialTeams)
   const [loadingCompetitions, setLoadingCompetitions] = useState(false)
   const [loadingTeams, setLoadingTeams] = useState(false)
   const [error, setError] = useState('')

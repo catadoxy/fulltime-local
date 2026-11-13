@@ -446,6 +446,11 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .team-search-option { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.45rem 0.55rem; border: 0; background: transparent; text-align: left; }
 .team-search-option:hover { background: var(--surface-2); border-color: transparent; }
 .team-search-results > .muted { display: block; padding: 0.45rem 0.55rem; }
+.roster-search { margin: 0.8rem 0; max-width: 420px; }
+.roster-player-list { max-height: 18rem; overflow-y: auto; padding: 2px; }
+.roster-player-option { display: flex; align-items: center; gap: 0.55rem; padding: 0.45rem 0.6rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); cursor: pointer; }
+.roster-player-option:hover { border-color: var(--line-strong); }
+.roster-player-option input { flex: 0 0 auto; }
 
 /* ---- Standings / stats ---- */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.65rem; }

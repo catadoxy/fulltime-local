@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
+import FootballTeamAssignments from '../components/FootballTeamAssignments'
 import { ConfirmDialog, ErrorBanner, LoadingSkeleton, TableWrap, formatDuration, parseTimestamp } from '../components/ui'
 import { TeamLabel } from '../components/TeamLabel'
 import { FORMAT_LABELS } from '../labels'
-import type { Match, Table, TournamentDetail as TDetail } from '../types'
+import type { FootballTeam, Match, Player, Table, TournamentDetail as TDetail } from '../types'
 
 const KNOCKOUT_ORDER = ['r64', 'r32', 'r16', 'qf', 'sf', 'third', 'final']
 const TABLE_STAGES = ['league', 'league_phase', 'group', 'swiss']
@@ -39,6 +40,15 @@ export default function TournamentDetail() {
   const [noteDraft, setNoteDraft] = useState('')
   const [dateDraft, setDateDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [editingParticipants, setEditingParticipants] = useState(false)
+  const [rosterPlayers, setRosterPlayers] = useState<Player[]>([])
+  const [rosterPlayerIds, setRosterPlayerIds] = useState<number[]>([])
+  const [rosterTeams, setRosterTeams] = useState<Record<string, number>>({})
+  const [rosterSearch, setRosterSearch] = useState('')
+  const [rosterLoading, setRosterLoading] = useState(false)
+  const [rosterSaving, setRosterSaving] = useState(false)
+  const [footballConfigured, setFootballConfigured] = useState(false)
+  const [confirmRosterRebuild, setConfirmRosterRebuild] = useState(false)
   const [adjustingElapsed, setAdjustingElapsed] = useState(false)
   const [elapsedHoursDraft, setElapsedHoursDraft] = useState('0')
   const [elapsedMinutesDraft, setElapsedMinutesDraft] = useState('0')
@@ -128,6 +138,9 @@ export default function TournamentDetail() {
   }
 
   const allPlayed = matches.length > 0 && matches.every((m) => m.played)
+  const hasRecordedResults = matches.some(
+    (match) => match.played && (match.home_score != null || match.away_score != null),
+  )
 
   function beginClose() {
     if (!t) return
@@ -158,6 +171,103 @@ export default function TournamentDetail() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function beginRosterEdit() {
+    if (!t) return
+    setRosterLoading(true)
+    setError('')
+    try {
+      const [availablePlayers, appSettings] = await Promise.all([
+        api.players({ limit: 500 }),
+        api.settings().catch(() => null),
+      ])
+      setRosterPlayers(availablePlayers)
+      setRosterPlayerIds(t.participants.map((participant) => participant.player_id))
+      setRosterTeams(Object.fromEntries(
+        t.participants
+          .filter((participant) => participant.team)
+          .map((participant) => [String(participant.player_id), participant.team!.id]),
+      ))
+      setFootballConfigured(appSettings?.football_data_configured ?? false)
+      setRosterSearch('')
+      setEditingParticipants(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRosterLoading(false)
+    }
+  }
+
+  function toggleRosterPlayer(playerId: number) {
+    if (rosterPlayerIds.includes(playerId)) {
+      setRosterPlayerIds((current) => current.filter((id) => id !== playerId))
+      setRosterTeams((current) => {
+        const next = { ...current }
+        delete next[String(playerId)]
+        return next
+      })
+    } else {
+      setRosterPlayerIds((current) => [...current, playerId])
+    }
+  }
+
+  async function saveRoster(replaceResults: boolean) {
+    if (!t) return
+    setRosterSaving(true)
+    setError('')
+    try {
+      const participantTeams = Object.fromEntries(
+        Object.entries(rosterTeams).filter(([playerId]) => rosterPlayerIds.includes(Number(playerId))),
+      )
+      const updated = await api.updateTournamentParticipants(t.id, {
+        player_ids: rosterPlayerIds,
+        participant_teams: participantTeams,
+        replace_results: replaceResults,
+      })
+      setT(updated)
+      setEditingParticipants(false)
+      setConfirmRosterRebuild(false)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRosterSaving(false)
+    }
+  }
+
+  function requestRosterSave() {
+    if (!t) return
+    if (rosterPlayerIds.length < 2) {
+      setError('A tournament needs at least two participants.')
+      return
+    }
+    const oldIds = t.participants.map((participant) => participant.player_id).sort((a, b) => a - b)
+    const newIds = [...rosterPlayerIds].sort((a, b) => a - b)
+    const oldTeams = Object.fromEntries(
+      t.participants.filter((participant) => participant.team).map((participant) => [
+        String(participant.player_id),
+        participant.team!.id,
+      ]),
+    )
+    const newTeams = Object.fromEntries(
+      Object.entries(rosterTeams).filter(([playerId]) => rosterPlayerIds.includes(Number(playerId))),
+    )
+    const samePlayers = JSON.stringify(oldIds) === JSON.stringify(newIds)
+    const sameTeams = JSON.stringify(Object.entries(oldTeams).sort()) === JSON.stringify(Object.entries(newTeams).sort())
+    if (samePlayers && sameTeams) {
+      setEditingParticipants(false)
+      return
+    }
+    if (samePlayers) {
+      void saveRoster(false)
+      return
+    }
+    if (hasRecordedResults) {
+      setConfirmRosterRebuild(true)
+      return
+    }
+    void saveRoster(false)
   }
 
   function beginElapsedAdjustment() {
@@ -249,6 +359,7 @@ export default function TournamentDetail() {
     try {
       await api.reopenTournament(t.id)
       setEditing(false)
+      setEditingParticipants(false)
       setAdjustingElapsed(false)
       await load()
     } catch (e) {
@@ -277,6 +388,12 @@ export default function TournamentDetail() {
       : null
   const elapsedMinutes = t.elapsed_minutes_override ?? timestampElapsedMinutes
   const elapsedLabel = elapsedMinutes === 0 ? '<1m' : formatDuration(elapsedMinutes ?? 0)
+  const filteredRosterPlayers = rosterPlayers.filter((player) =>
+    player.name.toLowerCase().includes(rosterSearch.trim().toLowerCase()),
+  )
+  const originalTeams: FootballTeam[] = t.participants.flatMap((participant) =>
+    participant.team ? [participant.team] : [],
+  )
 
   return (
     <div>
@@ -415,6 +532,19 @@ export default function TournamentDetail() {
         <div className="row">
           {canEdit && t.status === 'active' && (
             <button
+              type="button"
+              className="btn"
+              disabled={rosterLoading}
+              onClick={() => {
+                if (editingParticipants) setEditingParticipants(false)
+                else void beginRosterEdit()
+              }}
+            >
+              {rosterLoading ? 'Loading players…' : editingParticipants ? 'Cancel roster edit' : 'Edit participants'}
+            </button>
+          )}
+          {canEdit && t.status === 'active' && (
+            <button
               className="primary"
               title="Mark this tournament as completed"
               onClick={beginClose}
@@ -441,6 +571,81 @@ export default function TournamentDetail() {
           </Link>
         </div>
       </div>
+      {editingParticipants && (
+        <section className="panel roster-editor" aria-label="Edit tournament participants">
+          <div className="row between">
+            <div>
+              <h3 style={{ margin: '0 0 0.2rem' }}>Participants ({rosterPlayerIds.length})</h3>
+              <p className="muted small" style={{ margin: 0 }}>
+                Change the roster, then rebuild fixtures for the selected players.
+              </p>
+            </div>
+            {hasRecordedResults && <span className="badge loss">Scores will be cleared</span>}
+          </div>
+          {hasRecordedResults && (
+            <p className="muted small" style={{ marginTop: '0.7rem' }}>
+              This tournament has entered scores. Saving roster changes requires confirmation and will replace all fixtures and results.
+            </p>
+          )}
+          <div className="search-field roster-search">
+            <label htmlFor="roster-search">Find players</label>
+            <input
+              id="roster-search"
+              type="search"
+              value={rosterSearch}
+              onChange={(e) => setRosterSearch(e.target.value)}
+              placeholder="Search players…"
+            />
+          </div>
+          <div className="grid roster-player-list">
+            {filteredRosterPlayers.map((player) => {
+              const checked = rosterPlayerIds.includes(player.id)
+              return (
+                <label className="roster-player-option" key={player.id}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleRosterPlayer(player.id)}
+                  />
+                  <span className="grow">{player.name}</span>
+                </label>
+              )
+            })}
+            {filteredRosterPlayers.length === 0 && (
+              <p className="muted small">No players match that search.</p>
+            )}
+          </div>
+          {footballConfigured && (
+            <FootballTeamAssignments
+              assignments={rosterPlayerIds.map((playerId) => ({
+                key: String(playerId),
+                label: rosterPlayers.find((player) => player.id === playerId)?.name ?? 'Player',
+              }))}
+              values={rosterTeams}
+              initialTeams={originalTeams}
+              onChange={(key, teamId) => {
+                setRosterTeams((current) => {
+                  const next = { ...current }
+                  if (teamId == null) delete next[key]
+                  else next[key] = teamId
+                  return next
+                })
+              }}
+            />
+          )}
+          <div className="row" style={{ marginTop: '0.9rem' }}>
+            <button
+              className="primary"
+              type="button"
+              disabled={rosterSaving || rosterLoading || rosterPlayerIds.length < 2}
+              onClick={requestRosterSave}
+            >
+              {rosterSaving ? 'Saving…' : 'Save roster'}
+            </button>
+            {rosterPlayerIds.length < 2 && <span className="muted small">Select at least two players.</span>}
+          </div>
+        </section>
+      )}
       {adjustingElapsed && (
         <form className="panel" onSubmit={saveElapsedAdjustment}>
           <h3 style={{ marginTop: 0 }}>Adjust actual duration</h3>

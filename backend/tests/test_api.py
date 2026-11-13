@@ -574,3 +574,90 @@ def test_fulltime_import_rejects_other_sqlite_schema(tmp_path):
         )
     assert resp.status_code == 400
     assert "FullTime Local backup" in resp.json()["detail"]
+
+
+def test_roster_edits_rebuild_fixtures_safely():
+    _reset()
+    ids = _make_players(4)
+    tid = client.post(
+        "/api/tournaments", json={"name": "Editable roster", "format": "league", "player_ids": ids[:3]}
+    ).json()["id"]
+
+    add_player = client.put(
+        f"/api/tournaments/{tid}/participants",
+        json={"player_ids": ids, "participant_teams": {}},
+    )
+    assert add_player.status_code == 200, add_player.text
+    assert len(add_player.json()["participants"]) == 4
+    assert len(client.get(f"/api/tournaments/{tid}/matches").json()) == 6
+
+    match = client.get(f"/api/tournaments/{tid}/matches").json()[0]
+    client.post(
+        f"/api/tournaments/{tid}/matches/{match['id']}/result",
+        json={"home_score": 2, "away_score": 1},
+    )
+    blocked = client.put(
+        f"/api/tournaments/{tid}/participants",
+        json={"player_ids": ids[:3], "participant_teams": {}},
+    )
+    assert blocked.status_code == 400
+    assert "erase entered results" in blocked.json()["detail"]
+
+    rebuilt = client.put(
+        f"/api/tournaments/{tid}/participants",
+        json={"player_ids": ids[:3], "participant_teams": {}, "replace_results": True},
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert len(rebuilt.json()["participants"]) == 3
+    rebuilt_matches = client.get(f"/api/tournaments/{tid}/matches").json()
+    assert len(rebuilt_matches) == 3
+    assert all(not item["played"] and item["home_score"] is None for item in rebuilt_matches)
+
+    assert client.post(f"/api/tournaments/{tid}/close").status_code == 200
+    closed_edit = client.put(
+        f"/api/tournaments/{tid}/participants",
+        json={"player_ids": ids, "participant_teams": {}},
+    )
+    assert closed_edit.status_code == 400
+
+
+def test_roster_team_only_edit_preserves_existing_results():
+    _reset()
+    ids = _make_players(2)
+    db = SessionLocal()
+    try:
+        db.add(FootballTeam(
+            id=64, name="Liverpool FC", short_name="Liverpool", crest_url="https://example.test/liverpool.png",
+            competition_code="PL", competition_name="Premier League",
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    tournament = client.post(
+        "/api/tournaments",
+        json={
+            "name": "Club change only",
+            "format": "league",
+            "player_ids": ids,
+            "participant_teams": {str(ids[0]): 64},
+        },
+    ).json()
+    match = client.get(f"/api/tournaments/{tournament['id']}/matches").json()[0]
+    client.post(
+        f"/api/tournaments/{tournament['id']}/matches/{match['id']}/result",
+        json={"home_score": 1, "away_score": 0},
+    )
+    assert client.post(f"/api/tournaments/{tournament['id']}/reopen").status_code == 200
+
+    updated = client.put(
+        f"/api/tournaments/{tournament['id']}/participants",
+        json={"player_ids": ids, "participant_teams": {str(ids[1]): 64}},
+    )
+    assert updated.status_code == 200, updated.text
+    fixture = client.get(f"/api/tournaments/{tournament['id']}/matches").json()[0]
+    assert fixture["played"] is True
+    assert (fixture["home_score"], fixture["away_score"]) == (1, 0)
+    participant_teams = {p["player_id"]: p["team"] for p in updated.json()["participants"]}
+    assert participant_teams[ids[0]] is None
+    assert participant_teams[ids[1]]["id"] == 64

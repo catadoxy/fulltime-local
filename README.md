@@ -36,6 +36,7 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
   from past ones. Admins can adjust actual duration while closing or afterward; corrections
   also feed timing calibration.
 - **Locked results** — a completed tournament is read-only; reopen it to fix a score, then close it again.
+- **Safe roster editing** — update participants on active tournaments; if scores exist, rebuilding fixtures requires explicit confirmation.
 - **Login & roles** — open by default; set `FTL_PASSWORD` or create users to
   require login. Admins can do everything, viewers are read-only.
 

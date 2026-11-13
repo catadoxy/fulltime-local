@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Match, Tournament
-from ..schemas import ResultIn, TournamentClose, TournamentCreate, TournamentUpdate
+from ..schemas import (
+    ResultIn,
+    TournamentClose,
+    TournamentCreate,
+    TournamentParticipantsUpdate,
+    TournamentUpdate,
+)
 from ..serializers import match_out, tournament_out
 from ..services import fixtures, results, standings
 
@@ -63,6 +69,29 @@ def update_tournament(tournament_id: int, payload: TournamentUpdate, db: Session
         setattr(t, key, value)
     db.commit()
     db.refresh(t)
+    return tournament_out(t, detail=True)
+
+
+@router.put("/{tournament_id}/participants")
+def update_tournament_participants(
+    tournament_id: int,
+    payload: TournamentParticipantsUpdate,
+    db: Session = Depends(get_db),
+):
+    t = db.get(Tournament, tournament_id)
+    if not t:
+        raise HTTPException(404, "Tournament not found")
+    try:
+        fixtures.update_tournament_roster(
+            db,
+            t,
+            payload.player_ids,
+            payload.participant_teams,
+            replace_results=payload.replace_results,
+        )
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(400, str(exc))
     return tournament_out(t, detail=True)
 
 
