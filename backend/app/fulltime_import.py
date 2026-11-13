@@ -120,7 +120,13 @@ def _wipe_data(db: Session) -> None:
     db.flush()
 
 
-def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -> dict:
+def import_fulltime_backup(
+    db: Session,
+    data: bytes,
+    *,
+    replace: bool = False,
+    dry_run: bool = False,
+) -> dict:
     con, temp_path = _sqlite_backup(data)
     try:
         tables = {
@@ -142,16 +148,30 @@ def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -
             if not expected.issubset(actual):
                 raise ValueError(f"This FullTime Local backup is missing required {table} fields.")
 
+        backup_counts = {
+            "players": con.execute("SELECT COUNT(*) FROM players").fetchone()[0],
+            "tournaments": con.execute("SELECT COUNT(*) FROM tournaments").fetchone()[0],
+            "matches": con.execute("SELECT COUNT(*) FROM matches").fetchone()[0],
+            "friendlies": con.execute("SELECT COUNT(*) FROM games").fetchone()[0] if "games" in tables else 0,
+            "teams": con.execute("SELECT COUNT(*) FROM football_teams").fetchone()[0] if "football_teams" in tables else 0,
+        }
+
         if replace:
             _wipe_data(db)
 
         stats = {
             "players": 0,
+            "reused_players": 0,
+            "teams": 0,
+            "reused_teams": 0,
             "tournaments": 0,
             "matches": 0,
             "games": 0,
             "duplicates": 0,
+            "duplicate_tournaments": 0,
+            "duplicate_games": 0,
             "replaced": replace,
+            "backup": backup_counts,
         }
 
         # Reuse players with the same name; keep a source-to-local ID map for all relations.
@@ -183,6 +203,8 @@ def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -
                 db.flush()
                 existing_players[player.name] = player
                 stats["players"] += 1
+            else:
+                stats["reused_players"] += 1
             player_map[int(source_id)] = player.id
 
         # Team IDs are provider IDs, so they remain stable across installations.
@@ -209,6 +231,9 @@ def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -
                     team = FootballTeam(**values)
                     db.add(team)
                     db.flush()
+                    stats["teams"] += 1
+                else:
+                    stats["reused_teams"] += 1
                 team_map[source_id] = team.id
 
         existing_tournaments = {
@@ -228,6 +253,7 @@ def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -
             if key in existing_tournaments:
                 tournament_map[int(source_id)] = None
                 stats["duplicates"] += 1
+                stats["duplicate_tournaments"] += 1
                 continue
             fmt = str(_value(row, "format", "league"))
             if fmt not in SUPPORTED_FORMATS:
@@ -364,6 +390,7 @@ def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -
                 game_key = (home_id, away_id, played_at.isoformat(), home_score, away_score, note)
                 if game_key in existing_games:
                     stats["duplicates"] += 1
+                    stats["duplicate_games"] += 1
                     continue
                 values = {
                     "home_id": home_id,
@@ -383,7 +410,10 @@ def import_fulltime_backup(db: Session, data: bytes, *, replace: bool = False) -
                 existing_games.add(game_key)
                 stats["games"] += 1
 
-        db.commit()
+        if dry_run:
+            db.rollback()
+        else:
+            db.commit()
         return stats
     except Exception:
         db.rollback()

@@ -45,23 +45,43 @@ def meta(db: Session = Depends(get_db)):
     }
 
 
+async def _read_fulltime_upload(file: UploadFile) -> bytes:
+    data = await file.read(100 * 1024 * 1024 + 1)
+    if len(data) > 100 * 1024 * 1024:
+        raise HTTPException(413, "File is too large (max 100 MB)")
+    if not data:
+        raise HTTPException(400, "Empty file")
+    return data
+
+
+@router.post("/import/fulltime/preview")
+async def preview_fulltime_file(
+    file: UploadFile = File(...),
+    replace: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    data = await _read_fulltime_upload(file)
+    try:
+        summary = import_fulltime_backup(db, data, replace=replace, dry_run=True)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(400, str(exc))
+    return {"filename": file.filename, **summary}
+
+
 @router.post("/import/fulltime")
 async def import_fulltime_file(
     file: UploadFile = File(...),
     replace: bool = Form(False),
     db: Session = Depends(get_db),
 ):
-    data = await file.read(100 * 1024 * 1024 + 1)
-    if len(data) > 100 * 1024 * 1024:
-        raise HTTPException(413, "File is too large (max 100 MB)")
-    if not data:
-        raise HTTPException(400, "Empty file")
+    data = await _read_fulltime_upload(file)
     try:
         stats = import_fulltime_backup(db, data, replace=replace)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(400, str(exc))
-    return {"ok": True, "filename": file.filename, "replaced": replace, **stats}
+    return {"ok": True, "filename": file.filename, **stats}
 
 
 @router.get("/export/backup")

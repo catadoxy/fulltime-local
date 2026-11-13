@@ -457,7 +457,24 @@ def test_fulltime_backup_import_merge_dedup_and_replace():
         db.commit()
     finally:
         db.close()
+    existing_player_id = client.post("/api/players", json={"name": "P1"}).json()["id"]
     keep_id = client.post("/api/players", json={"name": "Keep me during merge"}).json()["id"]
+
+    preview = client.post(
+        "/api/import/fulltime/preview",
+        files={"file": ("fulltime-backup.db", backup.content, "application/octet-stream")},
+    )
+    assert preview.status_code == 200, preview.text
+    preview_data = preview.json()
+    assert preview_data["backup"] == {
+        "players": 2, "tournaments": 1, "matches": 1, "friendlies": 1, "teams": 1,
+    }
+    assert preview_data["players"] == 1
+    assert preview_data["reused_players"] == 1
+    assert len(client.get("/api/tournaments").json()) == 0
+    assert len(client.get("/api/games").json()) == 0
+    assert {p["id"] for p in client.get("/api/players").json()} == {existing_player_id, keep_id}
+
     first = client.post(
         "/api/import/fulltime",
         files={"file": ("fulltime-backup.db", backup.content, "application/octet-stream")},

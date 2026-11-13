@@ -45,6 +45,19 @@ async function parseError(res: Response): Promise<string> {
   }
 }
 
+async function uploadFullTimeBackup(path: string, file: File, replace = false): Promise<unknown> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('replace', replace ? 'true' : 'false')
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    body: form,
+    credentials: 'same-origin',
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
 export const api = {
   meta: (signal?: AbortSignal) => http<Meta>('/api/meta', { signal }),
   settings: (signal?: AbortSignal) =>
@@ -162,17 +175,9 @@ export const api = {
   clearResult: (tid: number, mid: number) =>
     http<Match>(`/api/tournaments/${tid}/matches/${mid}/result`, { method: 'DELETE' }),
 
-  importFullTimeBackup: async (file: File, replace = false) => {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('replace', replace ? 'true' : 'false')
-    const res = await fetch(`${BASE}/api/import/fulltime`, {
-      method: 'POST',
-      body: form,
-      credentials: 'same-origin',
-    })
-    if (!res.ok) throw new Error(await parseError(res))
-    return res.json() as Promise<unknown>
-  },
+  previewFullTimeBackup: (file: File, replace = false) =>
+    uploadFullTimeBackup('/api/import/fulltime/preview', file, replace),
+  importFullTimeBackup: (file: File, replace = false) =>
+    uploadFullTimeBackup('/api/import/fulltime', file, replace),
   exportBackupUrl: () => `${BASE}/api/export/backup`,
 }

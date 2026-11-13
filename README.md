@@ -150,8 +150,8 @@ Download a `.db` backup from **Settings → Backup & import**, then upload it in
 players, tournaments, results, friendlies and club badges into the current installation. Players with matching names
 are reused, duplicate tournaments and friendlies are skipped, and user accounts and API settings stay local to this
 installation. Use **Replace tournament data** for a clean restore of those records; accounts and settings are
-preserved. To restore the complete database including accounts, stop the app and replace `./data/fulltime.db` with
-the backup file.
+preserved. A pre-import preview shows the records to add, reuse and skip. To restore the complete database including
+accounts, stop the app and replace `./data/fulltime.db` with the backup file.
 
 ---
 
