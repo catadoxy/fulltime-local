@@ -24,6 +24,8 @@ Backend: FastAPI + SQLite. Frontend: React + Vite. Shipped as one Docker image.
 - **Compare** any two players (head-to-head and side-by-side), or jump straight from a friendly to its players'
   comparison.
 - **Form charts** — Elo, rating and cumulative goals over time on each player profile.
+- **Win probability** — upcoming fixtures and the TV “Up next” panel show an Elo-based
+  home/draw/away estimate; it updates automatically as results come in.
 - **Automatic ratings** — an Elo for tournaments and one for friendlies.
 - **Notes & themes** — tag a tournament with the game you played; choose from 4 themes in Settings.
 - **TV mode** — a big-screen view that cycles standings, fixtures, brackets and results.

@@ -115,6 +115,12 @@ export interface TournamentEstimate {
   }[]
 }
 
+export interface MatchProbability {
+  home: number
+  draw: number
+  away: number
+}
+
 export interface Match {
   id: number
   stage: string
@@ -135,6 +141,7 @@ export interface Match {
   winner_id: number | null
   leg: number
   note: string | null
+  probabilities?: MatchProbability | null
 }
 
 export interface StandingRow {

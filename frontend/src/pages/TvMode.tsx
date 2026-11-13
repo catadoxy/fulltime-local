@@ -121,16 +121,36 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
       body: (
         <div className="tv-list">
           {next.map((m) => (
-            <div className="tv-match" key={m.id}>
-              <div className="tv-match-spacer" aria-hidden="true" />
-              <div className="tv-side home"><TeamLabel team={teams.get(m.home_id ?? -1)}>{m.home_name}</TeamLabel></div>
-              <div className="tv-vs">vs</div>
-              <div className="tv-side"><TeamLabel team={teams.get(m.away_id ?? -1)}>{m.away_name}</TeamLabel></div>
-              <div className="tv-match-meta">
-                {STAGE_LABELS[m.stage] ?? m.stage}
-                {m.stage !== 'final' && m.round_number ? ` · R${m.round_number}` : ''}
-                {m.pitch ? ` · Pitch ${m.pitch}` : ''}
+            <div className="tv-fixture" key={m.id}>
+              <div className="tv-match">
+                <div className="tv-match-spacer" aria-hidden="true" />
+                <div className="tv-side home"><TeamLabel team={teams.get(m.home_id ?? -1)}>{m.home_name}</TeamLabel></div>
+                <div className="tv-vs">vs</div>
+                <div className="tv-side"><TeamLabel team={teams.get(m.away_id ?? -1)}>{m.away_name}</TeamLabel></div>
+                <div className="tv-match-meta">
+                  {STAGE_LABELS[m.stage] ?? m.stage}
+                  {m.stage !== 'final' && m.round_number ? ` · R${m.round_number}` : ''}
+                  {m.pitch ? ` · Pitch ${m.pitch}` : ''}
+                </div>
               </div>
+              {m.probabilities && (
+                <div className="tv-probability">
+                  <div
+                    className="prob-bar"
+                    role="img"
+                    aria-label={`Estimate: ${m.home_name} ${m.probabilities.home} percent, draw ${m.probabilities.draw} percent, ${m.away_name} ${m.probabilities.away} percent`}
+                  >
+                    <span className="prob-home" style={{ width: `${m.probabilities.home}%` }} />
+                    <span className="prob-draw" style={{ width: `${m.probabilities.draw}%` }} />
+                    <span className="prob-away" style={{ width: `${m.probabilities.away}%` }} />
+                  </div>
+                  <div className="tv-prob-labels" aria-hidden="true">
+                    <span><b>{m.probabilities.home}%</b> {m.home_name}</span>
+                    <span className="mid">{m.probabilities.draw}% draw</span>
+                    <span className="right"><b>{m.probabilities.away}%</b> {m.away_name}</span>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

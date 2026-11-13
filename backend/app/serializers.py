@@ -2,9 +2,21 @@ from __future__ import annotations
 
 from .models import Match, Participant, Tournament
 from .services.estimate import estimate_tournament
+from .services.predictions import match_probabilities
 
 
-def match_out(m: Match) -> dict:
+def match_out(m: Match, elos: dict[int, int] | None = None) -> dict:
+    probabilities = None
+    if (
+        elos
+        and not m.played
+        and m.home_id is not None
+        and m.away_id is not None
+    ):
+        probabilities = match_probabilities(
+            float(elos.get(m.home_id, 1000)),
+            float(elos.get(m.away_id, 1000)),
+        )
     return {
         "id": m.id,
         "stage": m.stage,
@@ -25,6 +37,7 @@ def match_out(m: Match) -> dict:
         "winner_id": m.winner_id,
         "leg": m.leg,
         "note": m.note,
+        "probabilities": probabilities,
     }
 
 

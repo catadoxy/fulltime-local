@@ -951,9 +951,21 @@ function Fixtures({
 
   if (matches.length === 0) return <div className="panel muted">No fixtures.</div>
 
+  const hasProbabilities = matches.some((match) => match.probabilities)
+
   return (
     <div className="panel">
-      <h3 style={{ marginTop: 0 }}>Fixtures &amp; results</h3>
+      <div className="row between">
+        <h3 style={{ marginTop: 0 }}>Fixtures &amp; results</h3>
+        {hasProbabilities && (
+          <span className="prob-legend">
+            <span><i className="prob-key home" />Home win</span>
+            <span><i className="prob-key draw" />Draw</span>
+            <span><i className="prob-key away" />Away win</span>
+            <span className="muted">· Elo estimate</span>
+          </span>
+        )}
+      </div>
       {sections.map((section) => {
         const knockoutSection = isKnockout(section.matches[0]?.stage ?? '')
         const rounds = [...new Set(section.matches.map((m) => m.round_number))]
@@ -971,16 +983,18 @@ function Fixtures({
                 {section.matches
                   .filter((m) => m.round_number === round)
                   .map((m) => (
-                    <MatchRow
-                      key={m.id}
-                      match={m}
-                      tid={tid}
-                      nbPitches={nbPitches}
-                      onChange={onChange}
-                      canEdit={canEdit}
-                      homeTeam={playerTeams.get(m.home_id ?? -1)}
-                      awayTeam={playerTeams.get(m.away_id ?? -1)}
-                    />
+                    <div className="match-with-probability" key={m.id}>
+                      <MatchRow
+                        match={m}
+                        tid={tid}
+                        nbPitches={nbPitches}
+                        onChange={onChange}
+                        canEdit={canEdit}
+                        homeTeam={playerTeams.get(m.home_id ?? -1)}
+                        awayTeam={playerTeams.get(m.away_id ?? -1)}
+                      />
+                      <MatchProbabilityBar match={m} />
+                    </div>
                   ))}
               </div>
             ))}
@@ -992,6 +1006,29 @@ function Fixtures({
 }
 
 const asStr = (v: number | null | undefined) => (v === null || v === undefined ? '' : String(v))
+
+function MatchProbabilityBar({ match }: { match: Match }) {
+  const probabilities = match.probabilities
+  if (!probabilities) return null
+  return (
+    <div className="match-probability">
+      <div
+        className="prob-bar"
+        role="img"
+        aria-label={`Estimate: ${match.home_name} ${probabilities.home} percent, draw ${probabilities.draw} percent, ${match.away_name} ${probabilities.away} percent`}
+      >
+        <span className="prob-home" style={{ width: `${probabilities.home}%` }} />
+        <span className="prob-draw" style={{ width: `${probabilities.draw}%` }} />
+        <span className="prob-away" style={{ width: `${probabilities.away}%` }} />
+      </div>
+      <div className="prob-labels" aria-hidden="true">
+        <span><b>{probabilities.home}%</b></span>
+        <span>{probabilities.draw}% draw</span>
+        <span className="right"><b>{probabilities.away}%</b></span>
+      </div>
+    </div>
+  )
+}
 
 function MatchRow({
   match,

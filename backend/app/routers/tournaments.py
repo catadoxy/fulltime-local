@@ -15,6 +15,7 @@ from ..schemas import (
 )
 from ..serializers import match_out, tournament_out
 from ..services import fixtures, results, standings
+from ..services.ratings import compute_ratings
 
 router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
@@ -146,7 +147,12 @@ def list_matches(tournament_id: int, db: Session = Depends(get_db)):
         .scalars()
         .all()
     )
-    return [match_out(m) for m in matches]
+    elos = (
+        {pid: entry["elo"] for pid, entry in compute_ratings(db, friendlies=False).items()}
+        if any(not m.played and m.home_id and m.away_id for m in matches)
+        else None
+    )
+    return [match_out(m, elos) for m in matches]
 
 
 @router.get("/{tournament_id}/standings")
