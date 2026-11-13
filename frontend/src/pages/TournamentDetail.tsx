@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../App'
@@ -55,6 +55,10 @@ export default function TournamentDetail() {
   const [savingElapsed, setSavingElapsed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const actionsRef = useRef<HTMLDivElement>(null)
+  const actionsButtonRef = useRef<HTMLButtonElement>(null)
+
   const [closeHoursDraft, setCloseHoursDraft] = useState('0')
   const [closeMinutesDraft, setCloseMinutesDraft] = useState('0')
   const [closeDurationEdited, setCloseDurationEdited] = useState(false)
@@ -176,6 +180,25 @@ export default function TournamentDetail() {
       setSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (!actionsOpen) return
+    const onPointerDown = (event: MouseEvent) => {
+      if (!actionsRef.current?.contains(event.target as Node)) setActionsOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActionsOpen(false)
+        actionsButtonRef.current?.focus()
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [actionsOpen])
 
   async function beginRosterEdit() {
     if (!t) return
@@ -403,8 +426,8 @@ export default function TournamentDetail() {
 
   return (
     <div>
-      <div className="row between page-head">
-        <div className="grow">
+      <div className="page-head tournament-head">
+        <div>
           {editing ? (
             <div className="edit-grid">
               <div>
@@ -450,12 +473,11 @@ export default function TournamentDetail() {
             </div>
           ) : (
             <>
-              <h1 style={{ marginBottom: t.note ? 2 : 6 }}>
-                {t.name}{' '}
+              <div className="title-line">
+                <h1>{t.name}</h1>
                 {canEdit && t.status === 'active' && (
                   <button
                     className="btn"
-                    style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
                     onClick={() => {
                       setNameDraft(t.name)
                       setNoteDraft(t.note ?? '')
@@ -469,7 +491,6 @@ export default function TournamentDetail() {
                 {canEdit && t.status === 'completed' && (
                   <button
                     className="btn"
-                    style={{ marginLeft: 8, verticalAlign: 'middle', fontWeight: 400 }}
                     onClick={() => void reopenTournament()}
                     disabled={busy}
                     title="Reopen to edit results, then close it again"
@@ -477,9 +498,9 @@ export default function TournamentDetail() {
                     Reopen
                   </button>
                 )}
-              </h1>
+              </div>
               {t.note && (
-                <div className="muted small" style={{ marginBottom: 4 }}>
+                <div className="muted small tournament-note">
                   {t.note}
                 </div>
               )}
@@ -535,47 +556,75 @@ export default function TournamentDetail() {
             </>
           )}
         </div>
-        <div className="row">
-          {canEdit && t.status === 'active' && (
+      </div>
+      <div className="tournament-actions">
+        {canEdit && t.status === 'active' && (
+          <button
+            className="primary"
+            title="Mark this tournament as completed"
+            onClick={beginClose}
+          >
+            Close tournament
+          </button>
+        )}
+        {canEdit && t.status === 'active' && (
+          <div className="action-menu-wrap" ref={actionsRef}>
             <button
+              ref={actionsButtonRef}
               type="button"
               className="btn"
-              disabled={rosterLoading}
-              onClick={() => {
-                if (editingParticipants) setEditingParticipants(false)
-                else void beginRosterEdit()
-              }}
+              aria-haspopup="true"
+              aria-expanded={actionsOpen}
+              onClick={() => setActionsOpen((open) => !open)}
             >
-              {rosterLoading ? 'Loading players…' : editingParticipants ? 'Cancel roster edit' : 'Edit participants'}
+              Manage <span aria-hidden="true" className="action-menu-caret">▾</span>
             </button>
-          )}
-          {canEdit && t.status === 'active' && (
-            <button
-              className="primary"
-              title="Mark this tournament as completed"
-              onClick={beginClose}
-            >
-              Close tournament
-            </button>
-          )}
-          {canEdit && (
-            <button className="danger" onClick={() => setConfirmDelete(true)}>
-              Delete
-            </button>
-          )}
-          <Link
-            className="btn"
-            to={`/tv/${t.id}`}
-            target="_blank"
-            rel="noreferrer"
-            title="Open the big-screen view for the venue"
-          >
-            TV
-          </Link>
-          <Link className="btn" to="/tournaments">
-            ← All tournaments
-          </Link>
-        </div>
+            {actionsOpen && (
+              <div className="action-menu" aria-label="Tournament actions">
+                <button
+                  type="button"
+                  disabled={rosterLoading}
+                  onClick={() => {
+                    setActionsOpen(false)
+                    if (editingParticipants) setEditingParticipants(false)
+                    else void beginRosterEdit()
+                  }}
+                >
+                  {rosterLoading ? 'Loading players…' : editingParticipants ? 'Close participant editor' : 'Edit participants'}
+                </button>
+                <div className="action-menu-sep" />
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    setActionsOpen(false)
+                    setConfirmDelete(true)
+                  }}
+                >
+                  Delete tournament
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {canEdit && t.status === 'completed' && (
+          <button className="danger" onClick={() => setConfirmDelete(true)}>
+            Delete
+          </button>
+        )}
+        <span className="spacer" />
+        <Link
+          className="btn"
+          to={`/tv/${t.id}`}
+          target="_blank"
+          rel="noreferrer"
+          title="Open the big-screen view for the venue"
+        >
+          TV
+        </Link>
+        <Link className="btn" to="/tournaments">
+          ← All tournaments
+        </Link>
       </div>
       {editingParticipants && t.status === 'active' && (
         <section className="panel roster-editor" aria-label="Edit tournament participants">

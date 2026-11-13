@@ -385,6 +385,51 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .settings-meta { margin: 1.5rem 0 0; text-align: center; }
 .settings-meta a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
+/* ---- Tournament header ---- */
+.page-head.tournament-head { margin-bottom: 0; }
+.title-line { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.title-line h1 { margin: 0; }
+.tournament-note { margin: 0.15rem 0 0.35rem; }
+.tournament-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.85rem 0 1.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--line);
+}
+.tournament-actions .spacer { flex: 1; }
+.action-menu-wrap { position: relative; }
+.action-menu-caret { font-size: 0.8rem; opacity: 0.9; margin-left: 0.1rem; }
+.action-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 40;
+  min-width: 13rem;
+  padding: 0.3rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.action-menu button {
+  display: flex;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--chalk);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.88rem;
+  text-align: left;
+}
+.action-menu button:hover { background: var(--surface-2); border-color: transparent; }
+.action-menu button.danger { color: var(--red); background: transparent; }
+.action-menu button.danger:hover { background: color-mix(in srgb, var(--red) 14%, transparent); }
+.action-menu-sep { height: 1px; background: var(--line); margin: 0.3rem 0.25rem; }
+
 /* ---- Badges ---- */
 .badge {
   display: inline-flex;
@@ -800,6 +845,8 @@ th.num .th-button { margin-left: auto; }
   .record-pagination { flex-direction: column; align-items: stretch; }
   .friendly-pagination .row,
   .record-pagination .row { justify-content: space-between; }
+  .tournament-actions { gap: 0.45rem; }
+  .tournament-actions .spacer { display: none; }
   .friendly-filter-grid { grid-template-columns: 1fr 1fr; }
   .friendly-date-filters { grid-column: 1 / -1; }
   .history-filter-grid { grid-template-columns: 1fr 1fr; }
