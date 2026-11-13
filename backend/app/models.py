@@ -135,6 +135,13 @@ class Match(Base):
     home_pen: Mapped[int | None] = mapped_column(Integer, default=None)
     away_pen: Mapped[int | None] = mapped_column(Integer, default=None)
 
+    # Snapshot of the pre-match estimate, captured when the result is first
+    # entered. Used to spot upsets after the fact (the live estimate changes
+    # as ratings move).
+    pre_home_probability: Mapped[int | None] = mapped_column(Integer, default=None)
+    pre_draw_probability: Mapped[int | None] = mapped_column(Integer, default=None)
+    pre_away_probability: Mapped[int | None] = mapped_column(Integer, default=None)
+
     played: Mapped[bool] = mapped_column(Boolean, default=False)
     winner_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"), default=None)
 

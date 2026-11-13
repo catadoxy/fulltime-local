@@ -374,8 +374,9 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
 .prob-away { background: var(--amber); }
 .match-probability { margin: -0.05rem 0.7rem 0.6rem; }
 .match-probability .prob-labels {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
   gap: 0.5rem;
   margin-top: 0.22rem;
   color: var(--muted);
@@ -383,12 +384,29 @@ th.sortable .arrow { color: var(--floodlight); margin-left: 0.25rem; }
   font-variant-numeric: tabular-nums;
 }
 .match-probability .prob-labels .right { text-align: right; }
+.match-probability .prob-draw-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
 .prob-labels b { color: var(--chalk); }
 .prob-legend { display: flex; align-items: center; gap: 0.65rem; color: var(--muted); font-size: 0.72rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
 .prob-key { display: inline-block; width: 8px; height: 8px; border-radius: 3px; margin-right: 0.28rem; }
 .prob-key.home { background: var(--floodlight); }
 .prob-key.draw { background: var(--line-strong); }
 .prob-key.away { background: var(--amber); }
+.upset-flag {
+  padding: 0.02rem 0.34rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--amber) 55%, var(--line));
+  color: var(--amber);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+}
 .friendly-pagination,
 .record-pagination { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.8rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
 .history-filter-details { margin: 0.25rem 0 0.75rem; }
@@ -1097,17 +1115,33 @@ th.num .th-button { margin-left: auto; }
 .tv-probability { margin: 0.22rem 1rem 0; font-size: clamp(0.95rem, 1.15vw, 1.3rem); }
 .tv-probability .prob-bar { height: 0.5em; min-height: 9px; }
 .tv-prob-labels {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
   gap: 0.6em;
   margin-top: 0.24em;
   color: var(--muted);
   font-size: 0.95em;
   font-variant-numeric: tabular-nums;
 }
-.tv-prob-labels .mid { text-align: center; }
+.tv-prob-labels .mid {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
 .tv-prob-labels .right { text-align: right; }
 .tv-prob-labels b { color: var(--chalk); font-weight: 750; font-size: 1.2em; }
+.tv-upsets { flex: 1; display: flex; flex-direction: column; gap: 1.1rem; min-height: 0; }
+.tv-panel-upset { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tv-upset { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.5rem 1.8rem; background: var(--surface-2); }
+.tv-upset.lead { background: linear-gradient(90deg, color-mix(in srgb, var(--amber) 13%, transparent), transparent 70%), var(--surface-2); border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+.tv-upset-player { font-family: var(--font-display); font-size: clamp(2.4rem, 5vw, 5rem); font-weight: 800; letter-spacing: -0.02em; }
+.tv-upset-odds { color: var(--chalk); font-size: clamp(1.05rem, 1.5vw, 1.6rem); margin-top: 0.2rem; }
+.tv-upset-odds b { color: var(--amber); font-weight: 750; }
+.tv-upset-match { color: var(--muted); font-size: clamp(0.9rem, 1.15vw, 1.25rem); margin-top: 0.4rem; }
+.tv-upset-stage { color: var(--muted); }
+.tv-upset-badge { display: inline-block; margin-right: 0.5rem; padding: 0.05em 0.45em; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--amber) 55%, var(--line)); color: var(--amber); font-weight: 700; }
 .tv-side {
   min-width: 0;
   overflow: hidden;

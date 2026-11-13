@@ -1023,7 +1023,14 @@ function MatchProbabilityBar({ match }: { match: Match }) {
       </div>
       <div className="prob-labels" aria-hidden="true">
         <span><b>{probabilities.home}%</b></span>
-        <span>{probabilities.draw}% draw</span>
+        <span
+          className="prob-draw-label"
+          style={{
+            left: `${Math.min(88, Math.max(12, probabilities.home + probabilities.draw / 2))}%`,
+          }}
+        >
+          {probabilities.draw}% draw
+        </span>
         <span className="right"><b>{probabilities.away}%</b></span>
       </div>
     </div>
@@ -1115,6 +1122,14 @@ function MatchRow({
           {nbPitches > 1 && match.pitch != null && <span className="badge small">P{match.pitch}</span>}
           <TeamLabel team={homeTeam}><span className="team-name">{match.home_name ?? <span className="muted">TBD</span>}</span></TeamLabel>
           {homeWin && ' ✓'}
+          {match.upset?.player_id === match.home_id && (
+            <span
+              className="upset-flag"
+              title={`Won from a ${match.upset.probability}% pre-match chance`}
+            >
+              odds
+            </span>
+          )}
         </div>
         <div className="score-box">
           <input
@@ -1142,6 +1157,14 @@ function MatchRow({
         <div className={`team away ${awayWin ? 'won' : ''}`}>
           {awayWin && '✓ '}
           <TeamLabel team={awayTeam}><span className="team-name">{match.away_name ?? <span className="muted">TBD</span>}</span></TeamLabel>
+          {match.upset?.player_id === match.away_id && (
+            <span
+              className="upset-flag"
+              title={`Won from a ${match.upset.probability}% pre-match chance`}
+            >
+              odds
+            </span>
+          )}
         </div>
         <div className="match-actions">
           {canSave && (

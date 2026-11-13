@@ -3,6 +3,7 @@ from __future__ import annotations
 from .models import Match, Participant, Tournament
 from .services.estimate import estimate_tournament
 from .services.predictions import match_probabilities
+from .services.results import upset_of
 
 
 def match_out(m: Match, elos: dict[int, int] | None = None) -> dict:
@@ -38,6 +39,18 @@ def match_out(m: Match, elos: dict[int, int] | None = None) -> dict:
         "leg": m.leg,
         "note": m.note,
         "probabilities": probabilities,
+        "pre_match_probabilities": (
+            {
+                "home": m.pre_home_probability,
+                "draw": m.pre_draw_probability,
+                "away": m.pre_away_probability,
+            }
+            if m.pre_home_probability is not None
+            and m.pre_draw_probability is not None
+            and m.pre_away_probability is not None
+            else None
+        ),
+        "upset": upset_of(m),
     }
 
 

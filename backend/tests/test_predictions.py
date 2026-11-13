@@ -3,7 +3,9 @@ from fastapi.testclient import TestClient
 
 from app.database import Base, engine
 from app.main import app
+from app.models import Match
 from app.services.predictions import match_probabilities
+from app.services.results import upset_of
 
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
@@ -55,6 +57,49 @@ def test_matches_include_estimates_only_while_unplayed():
     )
     played = client.get(f"/api/tournaments/{tid}/matches").json()[0]
     assert played["probabilities"] is None
+    assert set(played["pre_match_probabilities"]) == {"home", "draw", "away"}
+    assert sum(played["pre_match_probabilities"].values()) == 100
+    # Evenly matched players are not an upset, whichever way it went.
+    assert played["upset"] is None
+
+
+def test_upset_detection_uses_the_pre_match_snapshot():
+    underdog_win = Match(
+        home_id=1,
+        away_id=2,
+        played=True,
+        winner_id=2,
+        pre_home_probability=82,
+        pre_draw_probability=10,
+        pre_away_probability=8,
+    )
+    upset = upset_of(underdog_win)
+    assert upset == {"player_id": 2, "probability": 8, "opponent_probability": 82}
+
+    favourite_win = Match(
+        home_id=1,
+        away_id=2,
+        played=True,
+        winner_id=1,
+        pre_home_probability=82,
+        pre_draw_probability=10,
+        pre_away_probability=8,
+    )
+    assert upset_of(favourite_win) is None
+
+    narrow = Match(
+        home_id=1,
+        away_id=2,
+        played=True,
+        winner_id=2,
+        pre_home_probability=45,
+        pre_draw_probability=24,
+        pre_away_probability=31,
+    )
+    assert upset_of(narrow) is None
+
+    unplayed = Match(home_id=1, away_id=2, played=False)
+    assert upset_of(unplayed) is None
 
 
 def test_estimates_favour_the_stronger_record():

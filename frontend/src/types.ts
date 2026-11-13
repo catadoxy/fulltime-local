@@ -142,6 +142,12 @@ export interface Match {
   leg: number
   note: string | null
   probabilities?: MatchProbability | null
+  pre_match_probabilities?: MatchProbability | null
+  upset?: {
+    player_id: number
+    probability: number
+    opponent_probability: number
+  } | null
 }
 
 export interface StandingRow {

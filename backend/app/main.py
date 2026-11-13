@@ -56,6 +56,14 @@ def _migrate() -> None:
         tcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(tournaments)")}
         if tcols and "elapsed_minutes_override" not in tcols:
             conn.exec_driver_sql("ALTER TABLE tournaments ADD COLUMN elapsed_minutes_override INTEGER")
+        mcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(matches)")}
+        for column in (
+            "pre_home_probability",
+            "pre_draw_probability",
+            "pre_away_probability",
+        ):
+            if mcols and column not in mcols:
+                conn.exec_driver_sql(f"ALTER TABLE matches ADD COLUMN {column} INTEGER")
         pcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(participants)")}
         if pcols and "team_id" not in pcols:
             conn.exec_driver_sql(

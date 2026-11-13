@@ -54,6 +54,56 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
     })
   }
 
+  const upsets = matches
+    .filter((match) => match.upset)
+    .sort(
+      (a, b) =>
+        b.round_number - a.round_number ||
+        b.slot - a.slot ||
+        (b.pitch ?? 0) - (a.pitch ?? 0) ||
+        b.id - a.id,
+    )
+    .slice(0, 2)
+
+  if (upsets.length) {
+    panels.push({
+      key: 'upsets',
+      title: 'Beat the odds',
+      body: (
+        <div className="tv-upsets">
+          {upsets.map((match, index) => {
+            const upset = match.upset!
+            const player = names.get(upset.player_id) ?? '—'
+            const team = teams.get(upset.player_id)
+            const opponentName =
+              upset.player_id === match.home_id ? match.away_name : match.home_name
+            const playerScore =
+              upset.player_id === match.home_id ? match.home_score : match.away_score
+            const opponentScore =
+              upset.player_id === match.home_id ? match.away_score : match.home_score
+            return (
+              <div className={`tv-upset${index === 0 ? ' lead' : ''}`} key={match.id}>
+                <div className="tv-upset-player">
+                  <TeamLabel team={team}>{player}</TeamLabel>
+                </div>
+                <div className="tv-upset-odds">
+                  <b>{upset.probability}%</b> pre-match chance
+                </div>
+                <div className="tv-upset-match">
+                  {playerScore}–{opponentScore} vs {opponentName}
+                  <span className="tv-upset-stage">
+                    {' '}· {STAGE_LABELS[match.stage] ?? match.stage}
+                    {match.round_number ? ` R${match.round_number}` : ''}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ),
+    })
+  }
+
   const shownTables = tables.filter((table) => table.rows.length > 0)
   if (shownTables.length) {
     panels.push({
@@ -146,7 +196,17 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
                   </div>
                   <div className="tv-prob-labels" aria-hidden="true">
                     <span><b>{m.probabilities.home}%</b> {m.home_name}</span>
-                    <span className="mid">{m.probabilities.draw}% draw</span>
+                    <span
+                      className="mid"
+                      style={{
+                        left: `${Math.min(
+                          88,
+                          Math.max(12, m.probabilities.home + m.probabilities.draw / 2),
+                        )}%`,
+                      }}
+                    >
+                      {m.probabilities.draw}% draw
+                    </span>
                     <span className="right"><b>{m.probabilities.away}%</b> {m.away_name}</span>
                   </div>
                 </div>
@@ -237,6 +297,7 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
                 <TeamLabel team={teams.get(m.away_id ?? -1)}>{m.away_name}</TeamLabel>
               </div>
               <div className="tv-match-meta">
+                {m.upset && <span className="tv-upset-badge">Beat the odds</span>}
                 {STAGE_LABELS[m.stage] ?? m.stage}
                 {m.stage !== 'final' && m.round_number ? ` · R${m.round_number}` : ''}
               </div>
@@ -404,7 +465,7 @@ export default function TvMode() {
 
       <main className="tv-body">
         {panel ? (
-          <section className="tv-panel" key={panel.key}>
+          <section className={`tv-panel${panel.key === 'upsets' ? ' tv-panel-upset' : ''}`} key={panel.key}>
             <h2 className="tv-panel-title">{panel.title}</h2>
             {panel.body}
           </section>

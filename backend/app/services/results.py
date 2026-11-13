@@ -65,17 +65,67 @@ def advance_byes(db: Session, t: Tournament) -> None:
     db.flush()
 
 
+def _snapshot_odds(db: Session, m: Match) -> None:
+    """Record the pre-match estimate the first time a result is entered."""
+    if m.pre_home_probability is not None:
+        return
+    from .predictions import match_probabilities
+    from .ratings import compute_ratings
+
+    ratings = compute_ratings(db, friendlies=False)
+    home_elo = ratings.get(m.home_id, {"elo": 1000})["elo"]
+    away_elo = ratings.get(m.away_id, {"elo": 1000})["elo"]
+    odds = match_probabilities(float(home_elo), float(away_elo))
+    m.pre_home_probability = odds["home"]
+    m.pre_draw_probability = odds["draw"]
+    m.pre_away_probability = odds["away"]
+
+
+def upset_of(m: Match) -> dict | None:
+    """Return upset details when the winner was a clear underdog."""
+    if (
+        not m.played
+        or m.winner_id is None
+        or m.pre_home_probability is None
+        or m.pre_away_probability is None
+    ):
+        return None
+    if m.winner_id == m.home_id:
+        winner_probability = m.pre_home_probability
+        underdog_home = True
+    elif m.winner_id == m.away_id:
+        winner_probability = m.pre_away_probability
+        underdog_home = False
+    else:
+        return None
+    favourite_probability = (
+        m.pre_away_probability if underdog_home else m.pre_home_probability
+    )
+    # "Beat the odds": a clear underdog (<= 30%) beating a clear favourite.
+    if winner_probability > 30 or favourite_probability - winner_probability < 25:
+        return None
+    return {
+        "player_id": m.winner_id,
+        "probability": winner_probability,
+        "opponent_probability": favourite_probability,
+    }
+
+
 def set_result(db: Session, m: Match, payload) -> Match:
     t = m.tournament
     if t.status == "completed":
         raise ValueError("Tournament is closed - reopen it to edit results")
+    if m.home_id is None or m.away_id is None:
+        raise ValueError("Cannot record a result for a match with unassigned players")
+
+    # Save the estimate as it stood before this result (once only, so editing a
+    # score later does not rewrite history).
+    _snapshot_odds(db, m)
+
     m.home_score = payload.home_score
     m.away_score = payload.away_score
     m.home_pen = payload.home_pen
     m.away_pen = payload.away_pen
-
-    if m.home_id is None or m.away_id is None:
-        raise ValueError("Cannot record a result for a match with unassigned players")
 
     winner: int | None
     if m.home_score > m.away_score:
@@ -173,6 +223,10 @@ def clear_result(db: Session, m: Match) -> Match:
     m.home_pen = None
     m.away_pen = None
     m.winner_id = None
+    # The match is unplayed again, so a later result should capture fresh odds.
+    m.pre_home_probability = None
+    m.pre_draw_probability = None
+    m.pre_away_probability = None
     db.flush()
 
     # If everything is cleared, the event hasn't actually started yet.
