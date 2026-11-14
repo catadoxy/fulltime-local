@@ -55,23 +55,35 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
   }
 
   // Group repeat upsets by player: show each player's biggest shock once,
-  // with a count, so four upsets by one player become one card, not four.
+  // with a count and the opponents it came against.
   const upsetGroups = new Map<
     number,
-    { match: Match; probability: number; count: number }
+    {
+      match: Match
+      probability: number
+      count: number
+      opponents: Map<string, number>
+    }
   >()
   for (const match of matches) {
     const upset = match.upset
     if (!upset) continue
+    const opponentName =
+      (upset.player_id === match.home_id ? match.away_name : match.home_name) ?? '—'
     const existing = upsetGroups.get(upset.player_id)
     if (!existing) {
       upsetGroups.set(upset.player_id, {
         match,
         probability: upset.probability,
         count: 1,
+        opponents: new Map([[opponentName, 1]]),
       })
     } else {
       existing.count += 1
+      existing.opponents.set(
+        opponentName,
+        (existing.opponents.get(opponentName) ?? 0) + 1,
+      )
       if (upset.probability < existing.probability) {
         existing.match = match
         existing.probability = upset.probability
@@ -93,8 +105,9 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
             const upset = match.upset!
             const player = names.get(upset.player_id) ?? '—'
             const team = teams.get(upset.player_id)
-            const opponentName =
+            const opponentName = (
               upset.player_id === match.home_id ? match.away_name : match.home_name
+            ) ?? '—'
             const playerScore =
               upset.player_id === match.home_id ? match.home_score : match.away_score
             const opponentScore =
@@ -119,6 +132,16 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
                     {match.round_number ? ` R${match.round_number}` : ''}
                   </span>
                 </div>
+                {group.count > 1 && (() => {
+                  const also = new Map(group.opponents)
+                  also.set(opponentName, (also.get(opponentName) ?? 1) - 1)
+                  const rest = [...also.entries()]
+                    .filter(([, times]) => times > 0)
+                    .map(([name, times]) => (times > 1 ? `${name} ×${times}` : name))
+                  return rest.length ? (
+                    <div className="tv-upset-opponents">Also beat {rest.join(' · ')}</div>
+                  ) : null
+                })()}
               </div>
             )
           })}
