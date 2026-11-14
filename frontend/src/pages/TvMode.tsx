@@ -54,15 +54,32 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
     })
   }
 
-  const upsets = matches
-    .filter((match) => match.upset)
-    .sort(
-      (a, b) =>
-        b.round_number - a.round_number ||
-        b.slot - a.slot ||
-        (b.pitch ?? 0) - (a.pitch ?? 0) ||
-        b.id - a.id,
-    )
+  // Group repeat upsets by player: show each player's biggest shock once,
+  // with a count, so four upsets by one player become one card, not four.
+  const upsetGroups = new Map<
+    number,
+    { match: Match; probability: number; count: number }
+  >()
+  for (const match of matches) {
+    const upset = match.upset
+    if (!upset) continue
+    const existing = upsetGroups.get(upset.player_id)
+    if (!existing) {
+      upsetGroups.set(upset.player_id, {
+        match,
+        probability: upset.probability,
+        count: 1,
+      })
+    } else {
+      existing.count += 1
+      if (upset.probability < existing.probability) {
+        existing.match = match
+        existing.probability = upset.probability
+      }
+    }
+  }
+  const upsets = [...upsetGroups.values()]
+    .sort((a, b) => a.probability - b.probability)
     .slice(0, 2)
 
   if (upsets.length) {
@@ -71,7 +88,8 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
       title: 'Beat the odds',
       body: (
         <div className="tv-upsets">
-          {upsets.map((match, index) => {
+          {upsets.map((group, index) => {
+            const match = group.match
             const upset = match.upset!
             const player = names.get(upset.player_id) ?? '—'
             const team = teams.get(upset.player_id)
@@ -82,12 +100,17 @@ function buildPanels(t: TDetail, matches: Match[], tables: Table[]): Panel[] {
             const opponentScore =
               upset.player_id === match.home_id ? match.away_score : match.home_score
             return (
-              <div className={`tv-upset${index === 0 ? ' lead' : ''}`} key={match.id}>
+              <div className={`tv-upset${index === 0 ? ' lead' : ''}`} key={upset.player_id}>
                 <div className="tv-upset-player">
                   <TeamLabel team={team}>{player}</TeamLabel>
                 </div>
                 <div className="tv-upset-odds">
                   <b>{upset.probability}%</b> pre-match chance
+                  {group.count > 1 && (
+                    <span className="tv-upset-repeat">
+                      {' '}· beat the odds ×{group.count}
+                    </span>
+                  )}
                 </div>
                 <div className="tv-upset-match">
                   {playerScore}–{opponentScore} vs {opponentName}

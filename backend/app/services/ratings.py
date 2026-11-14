@@ -54,6 +54,10 @@ def _event_stream(
                 Match.played.is_(True),
                 Match.home_id.is_not(None),
                 Match.away_id.is_not(None),
+                # Ratings only move once an event is closed, so a running
+                # tournament cannot change the odds of its own remaining
+                # matches.
+                Tournament.status == "completed",
             )
         ).all()
         for m, t in rows:

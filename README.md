@@ -136,7 +136,9 @@ npm run dev        # http://localhost:5173 (proxies /api to :8756)
 Ratings are calculated automatically — nothing to set by hand. Each player has
 **two Elo ratings**, both starting at 1000:
 
-- **Tournament Elo** — from tournament matches only (Players list + Tournaments tab).
+- **Tournament Elo** — from closed tournament matches only (Players list + Tournaments tab). A running
+  tournament does not move ratings, so its own results never change the odds of its remaining fixtures;
+  closing it applies them, and reopening removes them again.
 - **Friendly Elo** — from friendlies only (Friendlies tab).
 
 Per match: `expected = 1 / (1 + 10^((opponent − you) / 400))`, then

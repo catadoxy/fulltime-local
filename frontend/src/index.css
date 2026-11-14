@@ -1139,6 +1139,7 @@ th.num .th-button { margin-left: auto; }
 .tv-upset-player { font-family: var(--font-display); font-size: clamp(2.4rem, 5vw, 5rem); font-weight: 800; letter-spacing: -0.02em; }
 .tv-upset-odds { color: var(--chalk); font-size: clamp(1.05rem, 1.5vw, 1.6rem); margin-top: 0.2rem; }
 .tv-upset-odds b { color: var(--amber); font-weight: 750; }
+.tv-upset-repeat { color: var(--amber); font-weight: 650; }
 .tv-upset-match { color: var(--muted); font-size: clamp(0.9rem, 1.15vw, 1.25rem); margin-top: 0.4rem; }
 .tv-upset-stage { color: var(--muted); }
 .tv-upset-badge { display: inline-block; margin-right: 0.5rem; padding: 0.05em 0.45em; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--amber) 55%, var(--line)); color: var(--amber); font-weight: 700; }
